@@ -61,22 +61,22 @@ _hp_s=(
 
 typeset -A _hp_c
 _hp_c=(
-  host           "blue"
-  pwd            "cyan"
-  prompt         "none"
-  prompt_a       "red"
-  prompt_x       "blue"
-  user_auth_krb  "green"
-  user_unauth    "red"
-  user_priv_root "red"
-  user_priv_sudo "yellow"
-  vc_git         "blue"
-  vc_hg          "blue"
-  vc_branch      "blue"
-  vc_file_status "blue"
-  vc_repo_status "blue"
-  user           "blue"
-  user_root      "red"
+  host           "%F{blue}"
+  pwd            "%F{cyan}"
+  prompt         "%f"
+  prompt_a       "%F{red}"
+  prompt_x       "%F{blue}"
+  user_auth_krb  "%F{green}"
+  user_unauth    "%F{red}"
+  user_priv_root "%F{red}"
+  user_priv_sudo "%F{yellow}"
+  vc_git         "%F{blue}"
+  vc_hg          "%F{blue}"
+  vc_branch      "%F{blue}"
+  vc_file_status "%F{blue}"
+  vc_repo_status "%F{blue}"
+  user           "%F{blue}"
+  user_root      "%F{red}"
 )
 
 ## Async Storage #######################################################
@@ -116,42 +116,42 @@ function _hp_test {
 
 function _hp_fmt_user_host {
   if (( EUID == 0 )) || [ "$USER" != "$_hp_login_user" ]; then
-    echo -n "%(!,%F{${_hp_c[user_root]}},%F{$_hp_c[user]})%n"
+    echo -n "%(!,$_hp_c[user_root],$_hp_c[user])%n"
   fi
   if [ "$_hp_session" != "local" ]; then
-    echo -n "%F{${_hp_c[host]}}@%m"
+    echo -n "$_hp_c[host]@%m"
   fi
 }
 
 function _hp_fmt_pwd {
-  (( ${_hp_conf[enable_pwd]} )) || return
-  echo "%F{${_hp_c[pwd]}}%~"
+  (( $_hp_conf[enable_pwd] )) || return
+  echo "$_hp_c[pwd]%~"
 }
 
 function _hp_fmt_prompt_symbol {
   if (( ${_hp_async_pid:-0} > 0 )); then
-    echo "%F{${_hp_c[prompt_a]}}${_hp_s[prompt]}%f "
+    echo "$_hp_c[prompt_a]$_hp_s[prompt]%f "
   elif (( ${_hp_async_x_pid:-0} > 0 )); then
-    echo "%F{${_hp_c[prompt_x]}}${_hp_s[prompt]}%f "
+    echo "$_hp_c[prompt_x]$_hp_s[prompt]%f "
   else
-    echo "%F{${_hp_c[prompt]}}${_hp_s[prompt]}%f "
+    echo "$_hp_c[prompt]$_hp_s[prompt]%f "
   fi
 }
 
 function _hp_fmt_git {
   if (( ${_hp_git[active]:-0} )); then
-    echo -n "%F{${_hp_c[vc_git]}}${_hp_s[vc_git]} "
-    echo -n "%F{${_hp_c[vc_branch]}}${_hp_git[branch]}"
+    echo -n "$_hp_c[vc_git]$_hp_s[vc_git] "
+    echo -n "$_hp_c[vc_branch]$_hp_git[branch]"
     if (( $_hp_git[staged] + $_hp_git[unstaged] + $_hp_git[untracked] > 0 )); then
-      echo -n " %F{$_hp_c[vc_file_status]}"
-      (( $_hp_git[staged] > 0 )) && echo -n "${_hp_s[vc_staged]}"
-      (( $_hp_git[unstaged] > 0 )) && echo -n "${_hp_s[vc_changed]}"
-      (( $_hp_git[untracked] > 0 )) && echo -n "${_hp_s[vc_untracked]}"
+      echo -n " $_hp_c[vc_file_status]"
+      (( $_hp_git[staged] > 0 )) && echo -n "$_hp_s[vc_staged]"
+      (( $_hp_git[unstaged] > 0 )) && echo -n "$_hp_s[vc_changed]"
+      (( $_hp_git[untracked] > 0 )) && echo -n "$_hp_s[vc_untracked]"
     fi
     if (( ${_hp_gitx[incoming]:-0} + ${_hp_gitx[outgoing]:-0} > 0 )); then
-      echo -n " %F{$_hp_c[vc_repo_status]}"
-      (( ${_hp_gitx[incoming]:-0} > 0 )) && echo -n "${_hp_s[vc_incoming]}"
-      (( ${_hp_gitx[outgoing]:-0} > 0 )) && echo -n "${_hp_s[vc_outgoing]}"
+      echo -n " $_hp_c[vc_repo_status]"
+      (( ${_hp_gitx[incoming]:-0} > 0 )) && echo -n "$_hp_s[vc_incoming]"
+      (( ${_hp_gitx[outgoing]:-0} > 0 )) && echo -n "$_hp_s[vc_outgoing]"
     fi
     echo "%f"
   fi
@@ -159,44 +159,44 @@ function _hp_fmt_git {
 
 function _hp_fmt_hg {
   if (( ${_hp_hg[active]:-0} )); then
-    echo -n "%F{${_hp_c[vc_hg]}}${_hp_s[vc_hg]} "
-    echo -n "%F{${_hp_c[vc_branch]}}${_hp_hg[branch]}"
+    echo -n "$_hp_c[vc_hg]$_hp_s[vc_hg] "
+    echo -n "$_hp_c[vc_branch]$_hp_hg[branch]"
     if (( $_hp_hg[changed] + $_hp_hg[untracked] > 0 )); then
-      echo -n " %F{${_hp_c[vc_file_status]}}"
-      (( $_hp_hg[changed] > 0 )) && echo -n "${_hp_s[vc_changed]}"
-      (( $_hp_hg[untracked] > 0 )) && echo -n "${_hp_s[vc_untracked]}"
+      echo -n " $_hp_c[vc_file_status]"
+      (( $_hp_hg[changed] > 0 )) && echo -n "$_hp_s[vc_changed]"
+      (( $_hp_hg[untracked] > 0 )) && echo -n "$_hp_s[vc_untracked]"
     fi
     if (( ${_hp_hgx[incoming]:-0} + ${_hp_hgx[outgoing]:-0} > 0 )); then
-      echo -n " %F{${_hp_c[vc_repo_status]}}"
-      (( ${_hp_hgx[incoming]:-0} > 0 )) && echo -n "${_hp_s[vc_incoming]}"
-      (( ${_hp_hgx[outgoing]:-0} > 0 )) && echo -n "${_hp_s[vc_outgoing]}"
+      echo -n " $_hp_c[vc_repo_status]"
+      (( ${_hp_hgx[incoming]:-0} > 0 )) && echo -n "$_hp_s[vc_incoming]"
+      (( ${_hp_hgx[outgoing]:-0} > 0 )) && echo -n "$_hp_s[vc_outgoing]"
     fi
     echo "%f"
   fi
 }
 
 function _hp_fmt_privileges {
-  (( ${_hp_conf[enable_priv]} )) || return
+  (( $_hp_conf[enable_priv] )) || return
   local _hp_priv_root=0
   local _hp_priv_sudo=0
   if (( EUID == 0 )); then
     _hp_priv_root=1
-  elif (( ${_hp_conf[enable_priv_sudo]} )); then
+  elif (( $_hp_conf[enable_priv_sudo] )); then
     if sudo -n true 2>/dev/null; then
       _hp_priv_sudo=1
     fi
   fi
   if (( $_hp_priv_root )); then
-    echo -n "%F{$_hp_c[user_priv_root]}${_hp_s[user_priv_root]}%f"
+    echo -n "$_hp_c[user_priv_root]$_hp_s[user_priv_root]%f"
   elif (( $_hp_priv_sudo )); then
-    echo -n "%F{$_hp_c[user_priv_sudo]}${_hp_s[user_priv_sudo]}%f"
+    echo -n "$_hp_c[user_priv_sudo]$_hp_s[user_priv_sudo]%f"
   fi
-  if (( ${_hp_conf[enable_priv_krb]} )); then
+  if (( $_hp_conf[enable_priv_krb] )); then
     if (( $+commands[klist] )); then
       if klist >/dev/null 2>&1; then
-        echo -n "%F{${_hp_c[user_auth_krb]}}${_hp_s[user_auth_krb]}%f"
+        echo -n "$_hp_c[user_auth_krb]$_hp_s[user_auth_krb]%f"
       else
-        echo -n "%F{${_hp_c[user_unauth]}}${_hp_s[user_auth_krb]}%f"
+        echo -n "$_hp_c[user_unauth]$_hp_s[user_auth_krb]%f"
       fi
     fi
   fi
@@ -237,7 +237,7 @@ function _hp_git_branch {
 
 function _hp_async_git {
   _hp_git=( active 0 )
-  if (( ${_hp_conf[enable_vc_git]} )) && (( $+commands[git] )) && _hp_search_up .git; then
+  if (( $_hp_conf[enable_vc_git] )) && (( $+commands[git] )) && _hp_search_up .git; then
     _hp_git[active]=1
     _hp_git[branch]="$(_hp_git_branch)"
     _hp_git[staged]="$(
@@ -252,7 +252,7 @@ function _hp_async_git {
 
 function _hp_async_gitx {
   _hp_gitx=()
-  if (( ${_hp_conf[enable_vc_git]} )) && (( $+commands[git] )) && _hp_search_up .git; then
+  if (( $_hp_conf[enable_vc_git] )) && (( $+commands[git] )) && _hp_search_up .git; then
     branch="$(_hp_git_branch)"
     remote="$(\git config --get branch.${branch}.remote 2>/dev/null)"
     if [[ -n "$remote" ]]; then
@@ -271,7 +271,7 @@ function _hp_async_gitx {
 
 function _hp_async_hg {
   _hp_hg=( active 0 )
-  if (( ${_hp_conf[enable_vc_hg]} )) && (( $+commands[hg] )) && _hp_search_up .hg; then
+  if (( $_hp_conf[enable_vc_hg] )) && (( $+commands[hg] )) && _hp_search_up .hg; then
     _hp_hg[active]=1
     _hp_hg[branch]="$(\hg branch 2>/dev/null)"
     _hp_hg[changed]="$(\hg status -mar 2>/dev/null | \wc -l)"
@@ -282,7 +282,7 @@ function _hp_async_hg {
 
 function _hp_async_hgx {
   _hp_hgx=()
-  if (( ${_hp_conf[enable_vc_hg]} )) && (( $+commands[hg] )) && _hp_search_up .hg; then
+  if (( $_hp_conf[enable_vc_hg] )) && (( $+commands[hg] )) && _hp_search_up .hg; then
     _hp_hgx[incoming]="$(\hg incoming --quiet 2>/dev/null | wc -l)"
     _hp_hgx[outgoing]="$(\hg outgoing --quiet 2>/dev/null | wc -l)"
   fi
@@ -300,7 +300,7 @@ function _hp_async_kill {
 
 function _hp_async {
   # We kill on directory change, otherwise keep working
-  (( ${_hp_conf[enable_async]} )) || return
+  (( $_hp_conf[enable_async] )) || return
   (( ${_hp_async_pid:-0} > 0 )) && return
   trap _hp_async_cb WINCH
   (
@@ -328,7 +328,7 @@ function _hp_async_x_kill {
 }
 
 function _hp_async_x {
-  (( ${_hp_conf[enable_async_x]} )) || return
+  (( $_hp_conf[enable_async_x] )) || return
   (( ${_hp_async_x_pid:-0} > 0 )) && return
   trap _hp_async_x_cb USR1
   (

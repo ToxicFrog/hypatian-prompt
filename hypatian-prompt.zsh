@@ -193,7 +193,7 @@ function _hp_fmt_privileges {
   fi
   if (( ${_hp_conf[enable_priv_krb]} )); then
     if (( $+commands[klist] )); then
-      if klist -t >/dev/null 2>&1; then
+      if klist >/dev/null 2>&1; then
         echo -n "%F{${_hp_c[user_auth_krb]}}${_hp_s[user_auth_krb]}%f"
       else
         echo -n "%F{${_hp_c[user_unauth]}}${_hp_s[user_auth_krb]}%f"

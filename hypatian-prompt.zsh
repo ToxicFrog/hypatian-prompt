@@ -219,10 +219,25 @@ function _hp_fmt_rprompt {
        $(_hp_fmt_privileges)
 }
 
+_hp_set_running=0
+_hp_set_rerun=0
+
 function _hp_set {
-  PROMPT="$(_hp_fmt_prompt)"
-  RPROMPT="$(_hp_fmt_rprompt)"
-  zle && zle .reset-prompt
+  if (( _hp_set_running )); then
+    _hp_set_rerun=1
+    return
+  fi
+  _hp_set_running=1
+  while (( _hp_set_running )); do
+    PROMPT="$(_hp_fmt_prompt)"
+    RPROMPT="$(_hp_fmt_rprompt)"
+    zle && zle .reset-prompt
+    if (( _hp_set_rerun )); then
+      _hp_set_rerun=0
+    else
+      _hp_set_running=0
+    fi
+  done
 }
 
 ## Asynchronous git process (slow and fast) ############################
@@ -313,8 +328,8 @@ function _hp_async {
 }
 
 function _hp_async_cb {
-  _hp_async_pid=0
   . "$_hp_async_file"
+  _hp_async_pid=0
   _hp_set
 }
 
@@ -340,8 +355,8 @@ function _hp_async_x {
 }
 
 function _hp_async_x_cb {
-  _hp_async_x_pid=0
   . "$_hp_async_x_file"
+  _hp_async_x_pid=0
   _hp_set
 }
 

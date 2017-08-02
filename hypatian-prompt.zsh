@@ -39,6 +39,7 @@ _hp_conf=(
   enable_env       1
   enable_env_proxy 1
   enable_pwd       1
+  enable_vc_root   1
   enable_priv      1
   enable_priv_sudo 1
   enable_priv_krb  1
@@ -54,11 +55,11 @@ _hp_s=(
   user_priv_sudo "√"
   vc_git         "±"
   vc_hg          "☿"
-  vc_staged      "+"
-  vc_changed     "!"
-  vc_untracked   "?"
-  vc_incoming    "⇣"
-  vc_outgoing    "⇡"
+  vc_staged      "%F{green}+"
+  vc_changed     "%F{yellow}!"
+  vc_untracked   "%F{red}?"
+  vc_incoming    "%F{yellow}⇣"
+  vc_outgoing    "%F{yellow}⇡"
   env_proxy      "@"
 )
 
@@ -78,6 +79,7 @@ _hp_c=(
   vc_branch      "%F{blue}"
   vc_file_status "%F{blue}"
   vc_repo_status "%F{blue}"
+  vc_root        "%F{blue}"
   user           "%F{blue}"
   user_root      "%F{red}"
   env_proxy      "%F{green}"
@@ -98,6 +100,7 @@ typeset -gA _hp_git
 typeset -gA _hp_gitx
 typeset -gA _hp_hg
 typeset -gA _hp_hgx
+typeset -g _hp_vc_root
 
 ## Utility functions ###################################################
 
@@ -105,7 +108,10 @@ function _hp_search_up {
   local dir
   dir="$PWD"
   while [[ -n "$dir" ]]; do
-    [[ -d "$dir/$1" ]] && return 0
+    if [[ -e "$dir/$1" ]]; then
+      echo "$dir"
+      return 0
+    fi
     dir="${dir%/*}"
   done
   return 1
@@ -129,7 +135,10 @@ function _hp_fmt_user_host {
 
 function _hp_fmt_pwd {
   (( $_hp_conf[enable_pwd] )) || return
-  echo "$_hp_c[pwd]%~"
+  if (( $_hp_conf[enable_vc_root] )) && [ -n "$_hp_vc_root" ]; then
+    echo -n "$_hp_c[vc_root][${_hp_vc_root##*/}] "
+  fi
+  echo "$_hp_c[pwd]%(5~,%-1~/…/%2~,%~)"
 }
 
 function _hp_fmt_prompt_symbol {
@@ -220,7 +229,7 @@ function _hp_fmt_env {
 function _hp_fmt_prompt {
   echo -n \
        $(_hp_fmt_user_host) \
-       $(_hp_fmt_pwd)'%-40(l| |\n)'$(_hp_fmt_prompt_symbol)
+       $(_hp_fmt_pwd)'%-35(l| |\n)'$(_hp_fmt_prompt_symbol)
   echo " "
 }
 
@@ -265,22 +274,25 @@ function _hp_git_branch {
 
 function _hp_async_git {
   _hp_git=( active 0 )
-  if (( $_hp_conf[enable_vc_git] )) && (( $+commands[git] )) && _hp_search_up .git; then
-    _hp_git[active]=1
-    _hp_git[branch]="$(_hp_git_branch)"
-    _hp_git[staged]="$(
-      LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^[^ ?]' | \wc -l)"
-    _hp_git[unstaged]="$(
-      LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^.[^ ?]' | \wc -l)"
-    _hp_git[untracked]="$(
-      LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^??' | \wc -l)"
+  if (( $_hp_conf[enable_vc_git] )) && (( $+commands[git] )); then
+    if _hp_vc_root="$(_hp_search_up .git)"; then
+      typeset -p _hp_vc_root
+      _hp_git[active]=1
+      _hp_git[branch]="$(_hp_git_branch)"
+      _hp_git[staged]="$(
+        LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^[^ ?]' | \wc -l)"
+      _hp_git[unstaged]="$(
+        LC_ALL=C \git status --porcelain 2>/dev/null| \grep '^.[^ ?]' | \wc -l)"
+      _hp_git[untracked]="$(
+        LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^??' | \wc -l)"
+    fi
   fi
   typeset -p _hp_git
 }
 
 function _hp_async_gitx {
   _hp_gitx=()
-  if (( $_hp_conf[enable_vc_git] )) && (( $+commands[git] )) && _hp_search_up .git; then
+  if (( $_hp_conf[enable_vc_git] )) && (( $+commands[git] )) && _hp_search_up .git >/dev/null; then
     branch="$(_hp_git_branch)"
     remote="$(\git config --get branch.${branch}.remote 2>/dev/null)"
     if [[ -n "$remote" ]]; then
@@ -299,18 +311,21 @@ function _hp_async_gitx {
 
 function _hp_async_hg {
   _hp_hg=( active 0 )
-  if (( $_hp_conf[enable_vc_hg] )) && (( $+commands[hg] )) && _hp_search_up .hg; then
-    _hp_hg[active]=1
-    _hp_hg[branch]="$(\hg branch 2>/dev/null)"
-    _hp_hg[changed]="$(\hg status -mar 2>/dev/null | \wc -l)"
-    _hp_hg[untracked]="$(\hg status -du 2>/dev/null | \wc -l)"
+  if (( $_hp_conf[enable_vc_hg] )) && (( $+commands[hg] )); then
+    if _hp_vc_root="$(_hp_search_up .hg)"; then
+      typeset -p _hp_vc_root
+      _hp_hg[active]=1
+      _hp_hg[branch]="$(\hg branch 2>/dev/null)"
+      _hp_hg[changed]="$(\hg status -mar 2>/dev/null | \wc -l)"
+      _hp_hg[untracked]="$(\hg status -du 2>/dev/null | \wc -l)"
+    fi
   fi
   typeset -p _hp_hg
 }
 
 function _hp_async_hgx {
   _hp_hgx=()
-  if (( $_hp_conf[enable_vc_hg] )) && (( $+commands[hg] )) && _hp_search_up .hg; then
+  if (( $_hp_conf[enable_vc_hg] )) && (( $+commands[hg] )) && _hp_search_up .hg >/dev/null; then
     _hp_hgx[incoming]="$(\hg incoming --quiet 2>/dev/null | wc -l)"
     _hp_hgx[outgoing]="$(\hg outgoing --quiet 2>/dev/null | wc -l)"
   fi
@@ -378,6 +393,7 @@ function _hp_async_x_cb {
 function _hp_chpwd {
   _hp_async_kill
   _hp_async_x_kill
+  unset _hp_vc_root
   _hp_git=()
   _hp_gitx=()
   _hp_hg=()

@@ -36,6 +36,8 @@ typeset -A _hp_conf
 _hp_conf=(
   enable_async     1
   enable_async_x   1
+  enable_env       1
+  enable_env_proxy 1
   enable_pwd       1
   enable_priv      1
   enable_priv_sudo 1
@@ -57,6 +59,7 @@ _hp_s=(
   vc_untracked   "?"
   vc_incoming    "⇣"
   vc_outgoing    "⇡"
+  env_proxy      "@"
 )
 
 typeset -A _hp_c
@@ -77,6 +80,7 @@ _hp_c=(
   vc_repo_status "%F{blue}"
   user           "%F{blue}"
   user_root      "%F{red}"
+  env_proxy      "%F{green}"
 )
 
 ## Async Storage #######################################################
@@ -203,6 +207,14 @@ function _hp_fmt_privileges {
   echo
 }
 
+function _hp_fmt_env {
+  (( $_hp_conf[enable_env] )) || return
+  if (( $_hp_conf[enable_env_proxy] )) && [ -n "$http_proxy" ]; then
+    echo -n "$_hp_c[env_proxy]$_hp_s[env_proxy]"
+  fi
+  echo "%f"
+}
+
 ## Putting it all together #############################################
 
 function _hp_fmt_prompt {
@@ -216,6 +228,7 @@ function _hp_fmt_rprompt {
   echo -n " "
   echo $(_hp_fmt_git) \
        $(_hp_fmt_hg) \
+       $(_hp_fmt_env) \
        $(_hp_fmt_privileges)
 }
 

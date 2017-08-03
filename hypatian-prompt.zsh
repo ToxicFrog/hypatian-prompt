@@ -38,52 +38,60 @@ _hp_conf=(
   enable_async_x   1
   enable_env       1
   enable_env_proxy 1
-  enable_pwd       1
+  enable_cwd       1
   enable_vc_root   1
   enable_priv      1
   enable_priv_sudo 1
-  enable_priv_krb  1
+  enable_auth_krb  1
   enable_vc_git    1
   enable_vc_hg     1
 )
 
-typeset -A _hp_s
-_hp_s=(
-  prompt         "•"
-  user_auth_krb  ""
-  user_priv_root "√"
-  user_priv_sudo "√"
-  vc_git         "±"
-  vc_hg          "☿"
-  vc_staged      "%F{green}+"
-  vc_changed     "%F{yellow}!"
-  vc_untracked   "%F{red}?"
-  vc_unresolved  "%F{red}%%"
-  vc_incoming    "%F{yellow}⇣"
-  vc_outgoing    "%F{yellow}⇡"
-  env_proxy      "@"
-)
+# Formatting for prompt components. s_*, e_* pairs are used at start
+# and end of text information items or sections. The other entries are
+# individual symbols with optional formatting, or in the case of
+# $_hp_f[cwd], the actual format used (since that's one of the most
+# likely components for customization.)
 
-typeset -A _hp_c
-_hp_c=(
-  host           "%F{blue}"
-  pwd            "%F{cyan}"
-  prompt         "%f"
-  prompt_a       "%F{red}"
-  prompt_x       "%F{blue}"
-  user_auth_krb  "%F{green}"
-  user_unauth    "%F{red}"
-  user_priv_root "%F{red}"
-  user_priv_sudo "%F{yellow}"
-  vc_git         "%F{blue}"
-  vc_hg          "%F{blue}"
-  vc_branch      "%F{blue}"
-  vc_file_status "%F{blue}"
-  vc_repo_status "%F{blue}"
-  vc_root        "%F{blue}"
-  user           "%F{blue}"
-  user_root      "%F{red}"
-  env_proxy      "%F{green}"
+typeset -A _hp_f=(
+  cwd              "%F{cyan}%(5~,%-1~/…/%2~,%~)%f"
+  env_proxy        "%F{green}@"
+  prompt           "%f• "
+  prompt_a         "%F{red}• "
+  prompt_x         "%F{blue}• "
+  user_auth_krb_ok "%F{green}"
+  user_auth_krb_no "%F{red}"
+  user_priv_root   "%F{red}√"
+  user_priv_sudo   "%F{blue}√"
+  vc_git           "±"
+  vc_hg            "☿"
+  vc_staged        "%F{green}+"
+  vc_changed       "%F{yellow}!"
+  vc_untracked     "%F{red}?"
+  vc_unresolved    "%F{red}%%"
+  vc_incoming      "%F{yellow}⇣"
+  vc_outgoing      "%F{yellow}⇡"
+
+  s_env            "%F{blue}"
+  e_env            "%f"
+  s_host           "%F{blue}@"
+  e_host           "%f"
+  s_cwd            "%F{cyan}"
+  e_cwd            "%f"
+  s_vc             "%F{blue}"
+  e_vc             "%f"
+  s_vc_branch      " %F{blue}"
+  e_vc_branch      "%F{blue}"
+  s_vc_file_status " %F{blue}"
+  e_vc_file_status "%F{blue}"
+  s_vc_repo_status " %F{blue}"
+  e_vc_repo_status "%F{blue}"
+  s_vc_root        "%F{blue}["
+  e_vc_root        "]%F{blue}"
+  s_user           "%F{blue}"
+  e_user           "%f"
+  s_user_root      "%F{red}"
+  e_user_root      "%f"
 )
 
 ## Async Storage #######################################################
@@ -98,10 +106,13 @@ fi
 
 # Associative arrays for async data results
 typeset -gA _hp_git
-typeset -gA _hp_gitx
 typeset -gA _hp_hg
-typeset -gA _hp_hgx
 typeset -g _hp_vc_root
+typeset -g _hp_priv_sudo
+typeset -g _hp_auth_krb
+
+typeset -gA _hp_gitx
+typeset -gA _hp_hgx
 
 ## Utility functions ###################################################
 
@@ -127,93 +138,94 @@ function _hp_test {
 
 function _hp_fmt_user_host {
   if (( EUID == 0 )) || [ "$USER" != "$_hp_login_user" ]; then
-    echo -n "%(!,$_hp_c[user_root],$_hp_c[user])%n"
+    echo -n "%(!,$_hp_f[s_user_root]%n$_hp_f[e_user_root],$_hp_f[s_user]%n$_hp_f[e_user])"
   fi
   if [ "$_hp_session" != "local" ]; then
-    echo -n "$_hp_c[host]@%m"
+    echo -n "$_hp_f[s_host]%m$_hp_f[e_host]"
   fi
 }
 
-function _hp_fmt_pwd {
-  (( $_hp_conf[enable_pwd] )) || return
-  if (( $_hp_conf[enable_vc_root] )) && [ -n "$_hp_vc_root" ]; then
-    echo -n "$_hp_c[vc_root][${_hp_vc_root##*/}] "
+function _hp_fmt_vc_root {
+  (( $_hp_conf[enable_vc_root] )) || return
+  if [ -n "$_hp_vc_root" ]; then
+    echo "$_hp_f[s_vc_root]${_hp_vc_root##*/}$_hp_f[e_vc_root]"
   fi
-  echo "$_hp_c[pwd]%(5~,%-1~/…/%2~,%~)"
+}
+
+function _hp_fmt_cwd {
+  (( $_hp_conf[enable_cwd] )) || return
+  echo "$_hp_f[cwd]"
 }
 
 function _hp_fmt_prompt_symbol {
   if (( ${_hp_async_pid:-0} > 0 )); then
-    echo "$_hp_c[prompt_a]$_hp_s[prompt]%f "
+    echo "$_hp_f[prompt_a]%f"
   elif (( ${_hp_async_x_pid:-0} > 0 )); then
-    echo "$_hp_c[prompt_x]$_hp_s[prompt]%f "
+    echo "$_hp_f[prompt_x]%f"
   else
-    echo "$_hp_c[prompt]$_hp_s[prompt]%f "
+    echo "$_hp_f[prompt]%f"
   fi
 }
 
 function _hp_fmt_git {
   if (( ${_hp_git[active]:-0} )); then
-    echo -n "$_hp_c[vc_git]$_hp_s[vc_git] "
-    echo -n "$_hp_c[vc_branch]$_hp_git[branch]"
+    echo -n "$_hp_f[s_vc]$_hp_f[vc_git]"
+    echo -n "$_hp_f[s_vc_branch]$_hp_git[branch]$_hp_f[e_vc_branch]"
     if (( $_hp_git[staged] + $_hp_git[unstaged] + $_hp_git[unresolved] + $_hp_git[untracked] > 0 )); then
-      echo -n " $_hp_c[vc_file_status]"
-      (( $_hp_git[staged] > 0 )) && echo -n "$_hp_s[vc_staged]"
-      (( $_hp_git[unstaged] > 0 )) && echo -n "$_hp_s[vc_changed]"
-      (( $_hp_git[unresolved] > 0 )) && echo -n "$_hp_s[vc_unresolved]"
-      (( $_hp_git[untracked] > 0 )) && echo -n "$_hp_s[vc_untracked]"
+      echo -n "$_hp_f[s_vc_file_status]"
+      (( $_hp_git[staged] > 0 )) && echo -n "$_hp_f[vc_staged]"
+      (( $_hp_git[unstaged] > 0 )) && echo -n "$_hp_f[vc_changed]"
+      (( $_hp_git[unresolved] > 0 )) && echo -n "$_hp_f[vc_unresolved]"
+      (( $_hp_git[untracked] > 0 )) && echo -n "$_hp_f[vc_untracked]"
+      echo -n "$_hp_f[e_vc_file_status]"
     fi
     if (( ${_hp_gitx[incoming]:-0} + ${_hp_gitx[outgoing]:-0} > 0 )); then
-      echo -n " $_hp_c[vc_repo_status]"
-      (( ${_hp_gitx[incoming]:-0} > 0 )) && echo -n "$_hp_s[vc_incoming]"
-      (( ${_hp_gitx[outgoing]:-0} > 0 )) && echo -n "$_hp_s[vc_outgoing]"
+      echo -n "$_hp_f[s_vc_repo_status]"
+      (( ${_hp_gitx[incoming]:-0} > 0 )) && echo -n "$_hp_f[vc_incoming]"
+      (( ${_hp_gitx[outgoing]:-0} > 0 )) && echo -n "$_hp_f[vc_outgoing]"
+      echo -n "$_hp_f[e_vc_repo_status]"
     fi
-    echo "%f"
+    echo "$_hp_f[e_vc]"
   fi
 }
 
 function _hp_fmt_hg {
   if (( ${_hp_hg[active]:-0} )); then
-    echo -n "$_hp_c[vc_hg]$_hp_s[vc_hg] "
-    echo -n "$_hp_c[vc_branch]$_hp_hg[branch]"
+    echo -n "$_hp_f[s_vc]$_hp_f[vc_git]"
+    echo -n "$_hp_f[s_vc_branch]$_hp_hg[branch]$_hp_f[e_vc_branch]"
     if (( $_hp_hg[changed] + $_hp_hg[unresolved] + $_hp_hg[untracked] > 0 )); then
-      echo -n " $_hp_c[vc_file_status]"
-      (( $_hp_hg[changed] > 0 )) && echo -n "$_hp_s[vc_changed]"
-      (( $_hp_hg[unresolved] > 0 )) && echo -n "$_hp_s[vc_unresolved]"
-      (( $_hp_hg[untracked] > 0 )) && echo -n "$_hp_s[vc_untracked]"
+      echo -n "$_hp_f[s_vc_file_status]"
+      (( $_hp_hg[changed] > 0 )) && echo -n "$_hp_f[vc_changed]"
+      (( $_hp_hg[unresolved] > 0 )) && echo -n "$_hp_f[vc_unresolved]"
+      (( $_hp_hg[untracked] > 0 )) && echo -n "$_hp_f[vc_untracked]"
+      echo -n "$_hp_f[e_vc_file_status]"
     fi
     if (( ${_hp_hgx[incoming]:-0} + ${_hp_hgx[outgoing]:-0} > 0 )); then
-      echo -n " $_hp_c[vc_repo_status]"
+      echo -n "$_hp_f[s_vc_repo_status]"
       (( ${_hp_hgx[incoming]:-0} > 0 )) && echo -n "$_hp_s[vc_incoming]"
       (( ${_hp_hgx[outgoing]:-0} > 0 )) && echo -n "$_hp_s[vc_outgoing]"
+      echo -n "$_hp_f[e_vc_repo_status]"
     fi
-    echo "%f"
+    echo "$_hp_f[e_vc]"
   fi
 }
 
 function _hp_fmt_privileges {
   (( $_hp_conf[enable_priv] )) || return
   local _hp_priv_root=0
-  local _hp_priv_sudo=0
   if (( EUID == 0 )); then
     _hp_priv_root=1
-  elif (( $_hp_conf[enable_priv_sudo] )); then
-    if sudo -n true 2>/dev/null; then
-      _hp_priv_sudo=1
-    fi
   fi
   if (( $_hp_priv_root )); then
-    echo -n "$_hp_c[user_priv_root]$_hp_s[user_priv_root]%f"
-  elif (( $_hp_priv_sudo )); then
-    echo -n "$_hp_c[user_priv_sudo]$_hp_s[user_priv_sudo]%f"
+    echo -n "$_hp_f[user_priv_root]"
+  elif (( $_hp_conf[enable_priv_sudo] )) && (( $_hp_priv_sudo )); then
+    echo -n "$_hp_f[user_priv_sudo]"
   fi
-  if (( $_hp_conf[enable_priv_krb] )); then
-    if (( $+commands[klist] )); then
-      if klist >/dev/null 2>&1; then
-        echo -n "$_hp_c[user_auth_krb]$_hp_s[user_auth_krb]%f"
-      else
-        echo -n "$_hp_c[user_unauth]$_hp_s[user_auth_krb]%f"
-      fi
+  if (( $_hp_conf[enable_auth_krb] )) && [ -n "$_hp_auth_krb" ]; then
+    if (( $_hp_auth_krb )); then
+      echo -n "$_hp_f[user_auth_krb_ok]"
+    else
+      echo -n "$_hp_f[user_auth_krb_no]"
     fi
   fi
   echo
@@ -221,10 +233,11 @@ function _hp_fmt_privileges {
 
 function _hp_fmt_env {
   (( $_hp_conf[enable_env] )) || return
+  echo -n "$_hp_f[s_env]"
   if (( $_hp_conf[enable_env_proxy] )) && [ -n "$http_proxy" ]; then
-    echo -n "$_hp_c[env_proxy]$_hp_s[env_proxy]"
+    echo -n "$_hp_f[env_proxy]"
   fi
-  echo "%f"
+  echo -n "$_hp_f[e_env]"
 }
 
 ## Putting it all together #############################################
@@ -232,8 +245,9 @@ function _hp_fmt_env {
 function _hp_fmt_prompt {
   echo -n \
        $(_hp_fmt_user_host) \
-       $(_hp_fmt_pwd)'%-35(l| |\n)'$(_hp_fmt_prompt_symbol)
-  echo " "
+       $(_hp_fmt_vc_root) \
+       $(_hp_fmt_cwd) \
+       '%-35(l||\n)'$(_hp_fmt_prompt_symbol)
 }
 
 function _hp_fmt_rprompt {
@@ -338,6 +352,28 @@ function _hp_async_hgx {
   typeset -p _hp_hgx
 }
 
+function _hp_async_sudo {
+  _hp_priv_sudo=0
+  if (( $_hp_conf[enable_priv_sudo] )); then
+    if sudo -n true 2>/dev/null; then
+      _hp_priv_sudo=1
+    fi
+  fi
+  typeset -p _hp_priv_sudo
+}
+
+function _hp_async_krb {
+  _hp_auth_krb=""
+  if (( $_hp_conf[enable_auth_krb] )) && (( $+commands[klist] )); then
+    if klist >/dev/null 2>&1; then
+      _hp_auth_krb=1
+    else
+      _hp_auth_krb=0
+    fi
+  fi
+  typeset -p _hp_auth_krb
+}
+
 ## Fast asynchronous process ###########################################
 
 function _hp_async_kill {
@@ -355,6 +391,8 @@ function _hp_async {
   (
     _hp_async_git
     _hp_async_hg
+    _hp_async_sudo
+    _hp_async_krb
     kill -WINCH $$ >/dev/null 2>&1
   ) > "$_hp_async_file" &!
   _hp_async_pid=$!
@@ -401,8 +439,11 @@ function _hp_chpwd {
   _hp_async_x_kill
   unset _hp_vc_root
   _hp_git=()
-  _hp_gitx=()
   _hp_hg=()
+  _hp_vc_root=""
+  _hp_priv_sudo=0
+  _hp_auth_krb=""
+  _hp_gitx=()
   _hp_hgx=()
 }
 

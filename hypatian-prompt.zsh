@@ -58,6 +58,7 @@ _hp_s=(
   vc_staged      "%F{green}+"
   vc_changed     "%F{yellow}!"
   vc_untracked   "%F{red}?"
+  vc_unresolved  "%F{red}%%"
   vc_incoming    "%F{yellow}⇣"
   vc_outgoing    "%F{yellow}⇡"
   env_proxy      "@"
@@ -155,10 +156,11 @@ function _hp_fmt_git {
   if (( ${_hp_git[active]:-0} )); then
     echo -n "$_hp_c[vc_git]$_hp_s[vc_git] "
     echo -n "$_hp_c[vc_branch]$_hp_git[branch]"
-    if (( $_hp_git[staged] + $_hp_git[unstaged] + $_hp_git[untracked] > 0 )); then
+    if (( $_hp_git[staged] + $_hp_git[unstaged] + $_hp_git[unresolved] + $_hp_git[untracked] > 0 )); then
       echo -n " $_hp_c[vc_file_status]"
       (( $_hp_git[staged] > 0 )) && echo -n "$_hp_s[vc_staged]"
       (( $_hp_git[unstaged] > 0 )) && echo -n "$_hp_s[vc_changed]"
+      (( $_hp_git[unresolved] > 0 )) && echo -n "$_hp_s[vc_unresolved]"
       (( $_hp_git[untracked] > 0 )) && echo -n "$_hp_s[vc_untracked]"
     fi
     if (( ${_hp_gitx[incoming]:-0} + ${_hp_gitx[outgoing]:-0} > 0 )); then
@@ -174,9 +176,10 @@ function _hp_fmt_hg {
   if (( ${_hp_hg[active]:-0} )); then
     echo -n "$_hp_c[vc_hg]$_hp_s[vc_hg] "
     echo -n "$_hp_c[vc_branch]$_hp_hg[branch]"
-    if (( $_hp_hg[changed] + $_hp_hg[untracked] > 0 )); then
+    if (( $_hp_hg[changed] + $_hp_hg[unresolved] + $_hp_hg[untracked] > 0 )); then
       echo -n " $_hp_c[vc_file_status]"
       (( $_hp_hg[changed] > 0 )) && echo -n "$_hp_s[vc_changed]"
+      (( $_hp_hg[unresolved] > 0 )) && echo -n "$_hp_s[vc_unresolved]"
       (( $_hp_hg[untracked] > 0 )) && echo -n "$_hp_s[vc_untracked]"
     fi
     if (( ${_hp_hgx[incoming]:-0} + ${_hp_hgx[outgoing]:-0} > 0 )); then
@@ -285,7 +288,7 @@ function _hp_async_git {
         LC_ALL=C \git status --porcelain 2>/dev/null| \grep '^.[^ ?]' | \wc -l)"
       _hp_git[untracked]="$(
         LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^??' | \wc -l)"
-      _hp_git[unmerged]="$(
+      _hp_git[unresolved]="$(
         LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^UU' | \wc -l)"
     fi
   fi
@@ -317,9 +320,10 @@ function _hp_async_hg {
     if _hp_vc_root="$(_hp_search_up .hg)"; then
       typeset -p _hp_vc_root
       _hp_hg[active]=1
-      _hp_hg[branch]="$(\hg branch 2>/dev/null)"
-      _hp_hg[changed]="$(\hg status -mar 2>/dev/null | \wc -l)"
-      _hp_hg[untracked]="$(\hg status -du 2>/dev/null | \wc -l)"
+      _hp_hg[branch]="$(\hg --config 'alias.branch = branch' branch 2>/dev/null)"
+      _hp_hg[changed]="$(\hg --config 'alias.status = status' status -mar 2>/dev/null | \wc -l)"
+      _hp_hg[untracked]="$(\hg --config 'alias.status = status' status -du 2>/dev/null | \wc -l)"
+      _hp_hg[unresolved]="$(\hg --config 'alias.resolve = resolve' resolve -l 'set:unresolved()' 2>/dev/null | \wc -l)"
     fi
   fi
   typeset -p _hp_hg
@@ -328,8 +332,8 @@ function _hp_async_hg {
 function _hp_async_hgx {
   _hp_hgx=()
   if (( $_hp_conf[enable_vc_hg] )) && (( $+commands[hg] )) && _hp_search_up .hg >/dev/null; then
-    _hp_hgx[incoming]="$(\hg incoming --quiet 2>/dev/null | wc -l)"
-    _hp_hgx[outgoing]="$(\hg outgoing --quiet 2>/dev/null | wc -l)"
+    _hp_hgx[incoming]="$(\hg --config 'alias.incoming = incoming' incoming --quiet 2>/dev/null | wc -l)"
+    _hp_hgx[outgoing]="$(\hg --config 'alias.outgoing = outgoing' outgoing --quiet 2>/dev/null | wc -l)"
   fi
   typeset -p _hp_hgx
 }

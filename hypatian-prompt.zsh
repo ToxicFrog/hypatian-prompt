@@ -285,6 +285,8 @@ function _hp_async_git {
         LC_ALL=C \git status --porcelain 2>/dev/null| \grep '^.[^ ?]' | \wc -l)"
       _hp_git[untracked]="$(
         LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^??' | \wc -l)"
+      _hp_git[unmerged]="$(
+        LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^UU' | \wc -l)"
     fi
   fi
   typeset -p _hp_git

@@ -15,7 +15,7 @@
 
 # Example:
 #
-# username@hostname ~/src/repository •               ☿ default !? ⇣⇡ √
+# username@hostname ~/src/repository •              ± master +!%? ⇣⇡ √º†
 #
 # This uses two separate asynchronous processes to fetch faster and
 # slower information from subprocesses. The fast one gets info about
@@ -55,12 +55,12 @@ _hp_conf=(
 
 typeset -A _hp_f=(
   cwd              "%F{cyan}%(5~,%-1~/…/%2~,%~)%f"
-  env_proxy        "%F{green}@"
+  env_proxy        "%F{green}º"
   prompt           "%f• "
   prompt_a         "%F{red}• "
   prompt_x         "%F{blue}• "
-  user_auth_krb_ok "%F{green}"
-  user_auth_krb_no "%F{red}"
+  user_auth_krb_ok "%F{green}†"
+  user_auth_krb_no "%F{red}†"
   user_priv_root   "%F{red}√"
   user_priv_sudo   "%F{blue}√"
   vc_git           "±"
@@ -254,8 +254,7 @@ function _hp_fmt_rprompt {
   echo -n " "
   echo $(_hp_fmt_git) \
        $(_hp_fmt_hg) \
-       $(_hp_fmt_env) \
-       $(_hp_fmt_privileges)
+       $(_hp_fmt_env)$(_hp_fmt_privileges)
 }
 
 _hp_set_running=0

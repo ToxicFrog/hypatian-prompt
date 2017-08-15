@@ -364,7 +364,7 @@ function _hp_async_sudo {
 function _hp_async_krb {
   _hp_auth_krb=""
   if (( $_hp_conf[enable_auth_krb] )) && (( $+commands[klist] )); then
-    if klist >/dev/null 2>&1; then
+    if klist -s >/dev/null 2>&1; then
       _hp_auth_krb=1
     else
       _hp_auth_krb=0

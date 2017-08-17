@@ -173,53 +173,43 @@ function _hp_fmt_prompt_symbol {
   fi
 }
 
-function _hp_fmt_git {
-  if (( ${_hp_git[active]:-0} )); then
-    echo -n "$_hp_f[s_vc]$_hp_f[vc_git]"
-    echo -n "$_hp_f[s_vc_branch]$_hp_git[branch]$_hp_f[e_vc_branch]"
-    if (( $_hp_git[staged] + $_hp_git[unstaged] + $_hp_git[unresolved] + $_hp_git[untracked] > 0 )); then
-      echo -n "$_hp_f[s_vc_file_status]"
-      (( $_hp_git[staged] > 0 )) && echo -n "$_hp_f[vc_staged]"
-      (( $_hp_git[unstaged] > 0 )) && echo -n "$_hp_f[vc_changed]"
-      (( $_hp_git[unresolved] > 0 )) && echo -n "$_hp_f[vc_unresolved]"
-      (( $_hp_git[untracked] > 0 )) && echo -n "$_hp_f[vc_untracked]"
-      echo -n "$_hp_f[e_vc_file_status]"
-    fi
-    if (( ${_hp_gitx[incoming]:-0} + ${_hp_gitx[outgoing]:-0} > 0 )); then
-      echo -n "$_hp_f[s_vc_repo_status]"
-      case "${_hp_gitx[incoming]:-0},${_hp_gitx[outgoing]:-0}" in
-        *,0) echo -n "${_hp_f[vc_incoming]}" ;;
-        0,*) echo -n "${_hp_f[vc_outgoing]}" ;;
-        *,*) echo -n "${_hp_f[vc_diverged]}" ;;
-      esac
-      echo -n "$_hp_f[e_vc_repo_status]"
-    fi
-    echo -n "$_hp_f[e_vc]"
+# _hp_fmt_vcs fmt_name branch nrof_staged _unstaged _conflicted _untracked \
+#     nrof_incoming _outgoing
+function _hp_fmt_vcs {
+  echo -n "$_hp_f[s_vc]$_hp_f[$1]"
+  echo -n "$_hp_f[s_vc_branch]$2$_hp_f[e_vc_branch]"
+  if (( $3 + $4 + $5 + $6 > 0 )); then
+    echo -n "$_hp_f[s_vc_file_status]"
+    (( $3 > 0 )) && echo -n "$_hp_f[vc_staged]"
+    (( $4 > 0 )) && echo -n "$_hp_f[vc_changed]"
+    (( $5 > 0 )) && echo -n "$_hp_f[vc_unresolved]"
+    (( $6 > 0 )) && echo -n "$_hp_f[vc_untracked]"
+    echo -n "$_hp_f[e_vc_file_status]"
   fi
+  if (( ${7:-0} + ${8:-0} > 0 )); then
+    echo -n "$_hp_f[s_vc_repo_status]"
+    case "${7:-0},${8:-0}" in
+      *,0) echo -n "${_hp_f[vc_incoming]}" ;;
+      0,*) echo -n "${_hp_f[vc_outgoing]}" ;;
+      *,*) echo -n "${_hp_f[vc_diverged]}" ;;
+    esac
+    echo -n "$_hp_f[e_vc_repo_status]"
+  fi
+  echo -n "$_hp_f[e_vc]"
+}
+
+function _hp_fmt_git {
+  (( ${_hp_git[active]:-0} )) || return
+  _hp_fmt_vcs vc_git "${_hp_git[branch]}" \
+    "$_hp_git[staged]" "$_hp_git[unstaged]" "$_hp_git[unresolved]" "$_hp_git[untracked]" \
+    "${_hp_gitx[incoming]}" "${_hp_gitx[outgoing]}"
 }
 
 function _hp_fmt_hg {
-  if (( ${_hp_hg[active]:-0} )); then
-    echo -n "$_hp_f[s_vc]$_hp_f[vc_git]"
-    echo -n "$_hp_f[s_vc_branch]$_hp_hg[branch]$_hp_f[e_vc_branch]"
-    if (( $_hp_hg[changed] + $_hp_hg[unresolved] + $_hp_hg[untracked] > 0 )); then
-      echo -n "$_hp_f[s_vc_file_status]"
-      (( $_hp_hg[changed] > 0 )) && echo -n "$_hp_f[vc_changed]"
-      (( $_hp_hg[unresolved] > 0 )) && echo -n "$_hp_f[vc_unresolved]"
-      (( $_hp_hg[untracked] > 0 )) && echo -n "$_hp_f[vc_untracked]"
-      echo -n "$_hp_f[e_vc_file_status]"
-    fi
-    if (( ${_hp_hgx[incoming]:-0} + ${_hp_hgx[outgoing]:-0} > 0 )); then
-      echo -n "$_hp_f[s_vc_repo_status]"
-      case "${_hp_hgx[incoming]:-0},${_hp_hgx[outgoing]:-0}" in
-        *,0) echo -n "${_hp_f[vc_incoming]}" ;;
-        0,*) echo -n "${_hp_f[vc_outgoing]}" ;;
-        *,*) echo -n "${_hp_f[vc_diverged]}" ;;
-      esac
-      echo -n "$_hp_f[e_vc_repo_status]"
-    fi
-    echo -n "$_hp_f[e_vc]"
-  fi
+  (( ${_hp_hg[active]:-0} )) || return
+  _hp_fmt_vcs vc_hg "${_hp_hg[branch]}" \
+    "$_hp_hg[staged]" "$_hp_hg[unstaged]" "$_hp_hg[unresolved]" "$_hp_hg[untracked]" \
+    "${_hp_hgx[incoming]}" "${_hp_hgx[outgoing]}"
 }
 
 function _hp_fmt_privileges {

@@ -78,8 +78,6 @@ typeset -A _hp_f=(
   e_env            "%f"
   s_host           "%F{blue}@"
   e_host           "%f"
-  s_cwd            "%F{cyan}"
-  e_cwd            "%f"
   s_vc             "%F{blue}"
   e_vc             "%f"
   s_vc_branch      " %F{blue}"

@@ -150,22 +150,22 @@ function _hp_fmt_user_host {
 function _hp_fmt_vc_root {
   (( $_hp_conf[enable_vc_root] )) || return
   if [ -n "$_hp_vc_root" ]; then
-    echo "$_hp_f[s_vc_root]${_hp_vc_root##*/}$_hp_f[e_vc_root]"
+    echo -n "$_hp_f[s_vc_root]${_hp_vc_root##*/}$_hp_f[e_vc_root]"
   fi
 }
 
 function _hp_fmt_cwd {
   (( $_hp_conf[enable_cwd] )) || return
-  echo "$_hp_f[cwd]"
+  echo -n "$_hp_f[cwd]"
 }
 
 function _hp_fmt_prompt_symbol {
   if (( ${_hp_async_pid:-0} > 0 )); then
-    echo "$_hp_f[prompt_a]%f"
+    echo -n "$_hp_f[prompt_a]%f"
   elif (( ${_hp_async_x_pid:-0} > 0 )); then
-    echo "$_hp_f[prompt_x]%f"
+    echo -n "$_hp_f[prompt_x]%f"
   else
-    echo "$_hp_f[prompt]%f"
+    echo -n "$_hp_f[prompt]%f"
   fi
 }
 
@@ -187,7 +187,7 @@ function _hp_fmt_git {
       (( ${_hp_gitx[outgoing]:-0} > 0 )) && echo -n "$_hp_f[vc_outgoing]"
       echo -n "$_hp_f[e_vc_repo_status]"
     fi
-    echo "$_hp_f[e_vc]"
+    echo -n "$_hp_f[e_vc]"
   fi
 }
 
@@ -208,7 +208,7 @@ function _hp_fmt_hg {
       (( ${_hp_hgx[outgoing]:-0} > 0 )) && echo -n "$_hp_s[vc_outgoing]"
       echo -n "$_hp_f[e_vc_repo_status]"
     fi
-    echo "$_hp_f[e_vc]"
+    echo -n "$_hp_f[e_vc]"
   fi
 }
 
@@ -230,7 +230,7 @@ function _hp_fmt_privileges {
       echo -n "$_hp_f[user_auth_krb_no]"
     fi
   fi
-  echo
+  echo -n ' '
 }
 
 function _hp_fmt_env {

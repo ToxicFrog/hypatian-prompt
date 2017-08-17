@@ -149,7 +149,7 @@ function _hp_fmt_host {
   fi
 }
 
-function _hp_fmt_user_host { _hp_fmt_user; hp_fmt_host; }
+function _hp_fmt_user_host { _hp_fmt_user; _hp_fmt_host; }
 
 function _hp_fmt_vc_root {
   (( $_hp_conf[enable_vc_root] )) || return

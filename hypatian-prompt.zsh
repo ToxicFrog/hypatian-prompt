@@ -73,6 +73,7 @@ typeset -A _hp_f=(
   vc_unresolved    "%F{red}%%"
   vc_incoming      "%F{yellow}⇣"
   vc_outgoing      "%F{yellow}⇡"
+  vc_diverged      "%F{red}⇅"
 
   s_env            "%F{blue}"
   e_env            "%f"
@@ -186,8 +187,11 @@ function _hp_fmt_git {
     fi
     if (( ${_hp_gitx[incoming]:-0} + ${_hp_gitx[outgoing]:-0} > 0 )); then
       echo -n "$_hp_f[s_vc_repo_status]"
-      (( ${_hp_gitx[incoming]:-0} > 0 )) && echo -n "$_hp_f[vc_incoming]"
-      (( ${_hp_gitx[outgoing]:-0} > 0 )) && echo -n "$_hp_f[vc_outgoing]"
+      case "${_hp_gitx[incoming]:-0},${_hp_gitx[outgoing]:-0}" in
+        *,0) echo -n "${_hp_f[vc_incoming]}" ;;
+        0,*) echo -n "${_hp_f[vc_outgoing]}" ;;
+        *,*) echo -n "${_hp_f[vc_diverged]}" ;;
+      esac
       echo -n "$_hp_f[e_vc_repo_status]"
     fi
     echo -n "$_hp_f[e_vc]"
@@ -207,8 +211,11 @@ function _hp_fmt_hg {
     fi
     if (( ${_hp_hgx[incoming]:-0} + ${_hp_hgx[outgoing]:-0} > 0 )); then
       echo -n "$_hp_f[s_vc_repo_status]"
-      (( ${_hp_hgx[incoming]:-0} > 0 )) && echo -n "$_hp_s[vc_incoming]"
-      (( ${_hp_hgx[outgoing]:-0} > 0 )) && echo -n "$_hp_s[vc_outgoing]"
+      case "${_hp_hgx[incoming]:-0},${_hp_hgx[outgoing]:-0}" in
+        *,0) echo -n "${_hp_f[vc_incoming]}" ;;
+        0,*) echo -n "${_hp_f[vc_outgoing]}" ;;
+        *,*) echo -n "${_hp_f[vc_diverged]}" ;;
+      esac
       echo -n "$_hp_f[e_vc_repo_status]"
     fi
     echo -n "$_hp_f[e_vc]"

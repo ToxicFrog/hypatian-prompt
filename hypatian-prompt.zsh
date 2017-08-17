@@ -138,14 +138,19 @@ function _hp_test {
 
 ## Formatting Parts of the Prompt ######################################
 
-function _hp_fmt_user_host {
+function _hp_fmt_user {
   if (( EUID == 0 )) || [ "$USER" != "$_hp_login_user" ]; then
     echo -n "%(!,$_hp_f[s_user_root]%n$_hp_f[e_user_root],$_hp_f[s_user]%n$_hp_f[e_user])"
   fi
+}
+
+function _hp_fmt_host {
   if [ "$_hp_session" != "local" ]; then
     echo -n "$_hp_f[s_host]%m$_hp_f[e_host]"
   fi
 }
+
+function _hp_fmt_user_host { _hp_fmt_user; hp_fmt_host; }
 
 function _hp_fmt_vc_root {
   (( $_hp_conf[enable_vc_root] )) || return

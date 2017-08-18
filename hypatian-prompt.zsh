@@ -305,7 +305,7 @@ function _hp_git_remote_ref {
 }
 
 function _hp_git_delta {
-  local upstream="$(\git rev-parse --symbolic-full-name "HEAD@{$1}" 2>&1)"
+  local upstream="$(\git rev-parse --symbolic-full-name "HEAD@{$1}" 2>/dev/null)"
   if [[ $upstream ]]; then
     local upstream_remote="$(echo "${upstream}" | cut -d/ -f3)"
     local upstream_branch="$(echo "${upstream}" | cut -d/ -f4-)"

@@ -56,11 +56,14 @@ _hp_conf=(
 # likely components for customization.)
 
 typeset -A _hp_f=(
+  prompt           '$user_host${user_host:+ }$cwd $prompt_sym'
+  rprompt          ' $vc_info${vc_info:+ }$env$priv'
+
   cwd              "%F{cyan}%(5~,%-1~/…/%2~,%~)%f"
   env_proxy        "%F{green}º"
-  prompt           "%f• "
-  prompt_a         "%F{red}• "
-  prompt_x         "%F{blue}• "
+  prompt_sym       "%f• "
+  prompt_sym_a     "%F{red}• "
+  prompt_sym_x     "%F{blue}• "
   user_auth_krb_ok "%F{green}†"
   user_auth_krb_no "%F{red}†"
   user_priv_root   "%F{red}√"
@@ -79,7 +82,7 @@ typeset -A _hp_f=(
   e_env            "%f"
   s_host           "%F{blue}@"
   e_host           "%f"
-  s_vc             "%F{blue}"
+  s_vc             " %F{blue}"
   e_vc             "%f"
   s_vc_branch      " %F{blue}"
   e_vc_branch      "%F{blue}"
@@ -108,7 +111,6 @@ fi
 # Associative arrays for async data results
 typeset -gA _hp_git
 typeset -gA _hp_hg
-typeset -g _hp_vc_root
 typeset -g _hp_priv_sudo
 typeset -g _hp_auth_krb
 
@@ -151,13 +153,6 @@ function _hp_fmt_host {
 
 function _hp_fmt_user_host { _hp_fmt_user; _hp_fmt_host; }
 
-function _hp_fmt_vc_root {
-  (( $_hp_conf[enable_vc_root] )) || return
-  if [ -n "$_hp_vc_root" ]; then
-    echo -n "$_hp_f[s_vc_root]${_hp_vc_root##*/}$_hp_f[e_vc_root]"
-  fi
-}
-
 function _hp_fmt_cwd {
   (( $_hp_conf[enable_cwd] )) || return
   echo -n "$_hp_f[cwd]"
@@ -165,25 +160,28 @@ function _hp_fmt_cwd {
 
 function _hp_fmt_prompt_symbol {
   if (( ${_hp_async_pid:-0} > 0 )); then
-    echo -n "$_hp_f[prompt_a]%f"
+    echo -n "$_hp_f[prompt_sym_a]%f"
   elif (( ${_hp_async_x_pid:-0} > 0 )); then
-    echo -n "$_hp_f[prompt_x]%f"
+    echo -n "$_hp_f[prompt_sym_x]%f"
   else
-    echo -n "$_hp_f[prompt]%f"
+    echo -n "$_hp_f[prompt_sym]%f"
   fi
 }
 
 # _hp_fmt_vcs fmt_name branch nrof_staged _unstaged _conflicted _untracked \
-#     nrof_incoming _outgoing
+#     nrof_incoming _outgoing vc_root
 function _hp_fmt_vcs {
   echo -n "$_hp_f[s_vc]$_hp_f[$1]"
+  if (( $_hp_conf[enable_vc_root] )) && [ -n "$9" ]; then
+    echo -n "$_hp_f[s_vc_root]$9$_hp_f[e_vc_root]"
+  fi
   echo -n "$_hp_f[s_vc_branch]$2$_hp_f[e_vc_branch]"
-  if (( $3 + $4 + $5 + $6 > 0 )); then
+  if (( ${3:-0} + ${4:-0} + ${5:-0} + ${6:-0} > 0 )); then
     echo -n "$_hp_f[s_vc_file_status]"
-    (( $3 > 0 )) && echo -n "$_hp_f[vc_staged]"
-    (( $4 > 0 )) && echo -n "$_hp_f[vc_changed]"
-    (( $5 > 0 )) && echo -n "$_hp_f[vc_unresolved]"
-    (( $6 > 0 )) && echo -n "$_hp_f[vc_untracked]"
+    (( ${3:-0} > 0 )) && echo -n "$_hp_f[vc_staged]"
+    (( ${4:-0} > 0 )) && echo -n "$_hp_f[vc_changed]"
+    (( ${5:-0} > 0 )) && echo -n "$_hp_f[vc_unresolved]"
+    (( ${6:-0} > 0 )) && echo -n "$_hp_f[vc_untracked]"
     echo -n "$_hp_f[e_vc_file_status]"
   fi
   if (( ${7:-0} + ${8:-0} > 0 )); then
@@ -202,15 +200,17 @@ function _hp_fmt_git {
   (( ${_hp_git[active]:-0} )) || return
   _hp_fmt_vcs vc_git "${_hp_git[branch]}" \
     "$_hp_git[staged]" "$_hp_git[unstaged]" "$_hp_git[unresolved]" "$_hp_git[untracked]" \
-    "${_hp_gitx[incoming]}" "${_hp_gitx[outgoing]}"
+    "${_hp_gitx[incoming]}" "${_hp_gitx[outgoing]}" "${_hp_git[vc_root]##*/}"
 }
 
 function _hp_fmt_hg {
   (( ${_hp_hg[active]:-0} )) || return
   _hp_fmt_vcs vc_hg "${_hp_hg[branch]}" \
     "$_hp_hg[staged]" "$_hp_hg[unstaged]" "$_hp_hg[unresolved]" "$_hp_hg[untracked]" \
-    "${_hp_hgx[incoming]}" "${_hp_hgx[outgoing]}"
+    "${_hp_hgx[incoming]}" "${_hp_hgx[outgoing]}" "${_hp_hg[vc_root]##*/}"
 }
+
+function _hp_fmt_vc_info { _hp_fmt_git; _hp_fmt_hg } 
 
 function _hp_fmt_privileges {
   (( $_hp_conf[enable_priv] )) || return
@@ -244,19 +244,15 @@ function _hp_fmt_env {
 
 ## Putting it all together #############################################
 
-function _hp_fmt_prompt {
-  echo -n \
-       $(_hp_fmt_user_host) \
-       $(_hp_fmt_vc_root) \
-       $(_hp_fmt_cwd) \
-       '%-35(l||\n)'$(_hp_fmt_prompt_symbol)
-}
-
-function _hp_fmt_rprompt {
-  echo -n " "
-  echo $(_hp_fmt_git) \
-       $(_hp_fmt_hg) \
-       $(_hp_fmt_env)$(_hp_fmt_privileges)
+function _hp_set_prompts {
+  local user_host="$(_hp_fmt_user_host)"
+  local cwd="$(_hp_fmt_cwd)"
+  local prompt_sym="$(_hp_fmt_prompt_symbol)"
+  local vc_info="$(_hp_fmt_vc_info)"
+  local env="$(_hp_fmt_env)"
+  local priv="$(_hp_fmt_privileges)"
+  eval PROMPT="\"$_hp_f[prompt]\""
+  eval RPROMPT="\"$_hp_f[rprompt]\""
 }
 
 _hp_set_running=0
@@ -269,8 +265,7 @@ function _hp_set {
   fi
   _hp_set_running=1
   while (( _hp_set_running )); do
-    PROMPT="$(_hp_fmt_prompt)"
-    RPROMPT="$(_hp_fmt_rprompt)"
+    _hp_set_prompts
     zle && zle .reset-prompt
     if (( _hp_set_rerun )); then
       _hp_set_rerun=0
@@ -293,9 +288,9 @@ function _hp_git_branch {
 function _hp_async_git {
   _hp_git=( active 0 )
   if (( $_hp_conf[enable_vc_git] )) && (( $+commands[git] )); then
-    if _hp_vc_root="$(_hp_search_up .git)"; then
-      typeset -p _hp_vc_root
+    if vc_root="$(_hp_search_up .git)"; then
       _hp_git[active]=1
+      _hp_git[vc_root]="$vc_root"
       _hp_git[branch]="$(_hp_git_branch)"
       _hp_git[staged]="$(
         LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^[^ ?]' | \wc -l)"
@@ -332,9 +327,10 @@ function _hp_async_gitx {
 function _hp_async_hg {
   _hp_hg=( active 0 )
   if (( $_hp_conf[enable_vc_hg] )) && (( $+commands[hg] )); then
-    if _hp_vc_root="$(_hp_search_up .hg)"; then
+    if vc_root="$(_hp_search_up .hg)"; then
       typeset -p _hp_vc_root
       _hp_hg[active]=1
+      _hp_hg[vc_root]="$vc_root"
       _hp_hg[branch]="$(\hg --config 'alias.branch = branch' branch 2>/dev/null)"
       _hp_hg[changed]="$(\hg --config 'alias.status = status' status -mar 2>/dev/null | \wc -l)"
       _hp_hg[untracked]="$(\hg --config 'alias.status = status' status -du 2>/dev/null | \wc -l)"

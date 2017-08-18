@@ -64,9 +64,9 @@ RPROMPT=' $(_hp_fmt_vc_info)$(_hp_fmt_env)$(_hp_fmt_privileges)'
 typeset -A _hp_f=(
   cwd              "%F{cyan}%(5~,%-1~/…/%2~,%~)%f"
   env_proxy        "%F{green}º"
-  prompt_sym       "%f• "
-  prompt_sym_a     "%F{red}• "
-  prompt_sym_x     "%F{blue}• "
+  prompt_sym       "%b%f• "
+  prompt_sym_a     "%b%F{red}•%f "
+  prompt_sym_x     "%b%F{blue}•%f "
   user_auth_krb_ok "%F{green}†"
   user_auth_krb_no "%F{red}†"
   user_priv_root   "%F{red}√"
@@ -163,11 +163,11 @@ function _hp_fmt_cwd {
 
 function _hp_fmt_prompt_symbol {
   if (( ${_hp_async_pid:-0} > 0 )); then
-    echo -n "$_hp_f[prompt_sym_a]%f"
+    echo -n "$_hp_f[prompt_sym_a]"
   elif (( ${_hp_async_x_pid:-0} > 0 )); then
-    echo -n "$_hp_f[prompt_sym_x]%f"
+    echo -n "$_hp_f[prompt_sym_x]"
   else
-    echo -n "$_hp_f[prompt_sym]%f"
+    echo -n "$_hp_f[prompt_sym]"
   fi
 }
 

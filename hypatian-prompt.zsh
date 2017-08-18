@@ -461,7 +461,7 @@ function _hp_get_session {
   if [[ -n "${SSH_CLIENT-}${SSH2_CLIENT-}${SSH_TTY-}" ]]; then
     _hp_session=ssh
   else
-    local who_am_i="$(LANG=C who am i)"
+    local whoami="$(LANG=C who am i)"
     local parent="$(ps -o comm= -p $PPID 2> /dev/null)"
     if [[ "$whoami" != *'('* ]]; then
       _hp_session=local

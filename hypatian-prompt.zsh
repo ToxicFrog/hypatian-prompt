@@ -136,7 +136,7 @@ function _hp_search_up {
 }
 
 function _hp_test {
-  _hp_session=other
+  _hp_session=(test local)
   _hp_login_user=nobody
 }
 
@@ -149,7 +149,7 @@ function _hp_fmt_user {
 }
 
 function _hp_fmt_host {
-  if [ "$_hp_session" != "local" ]; then
+  if [[ ! "${_hp_session[(r)local]}" ]]; then
     echo -n "$_hp_f[s_host]%m$_hp_f[e_host]"
   fi
 }
@@ -466,22 +466,38 @@ function _hp_precmd {
 
 ## Initial setup and hooking the shell #################################
 
-function _hp_get_session {
-  # Figure out what sort of session we're in
-  if [[ -n "${SSH_CLIENT-}${SSH2_CLIENT-}${SSH_TTY-}" ]]; then
-    _hp_session=ssh
-  else
-    local whoami="$(LANG=C who am i)"
-    local parent="$(ps -o comm= -p $PPID 2> /dev/null)"
-    if [[ "$whoami" != *'('* ]]; then
-      _hp_session=local
-    elif [[ "$parent" = "su" || "$parent" = "sudo" ]]; then
-      _hp_session=su
-    else
-      _hp_session=other
-    fi
+# _hp_grep_parents key pattern PID
+# Check if PID or any of its parents have a command matching pattern.
+# If so, emit key and return 0.
+# If not, emit nothing and return 1.
+function _hp_grep_parents {
+  (( $3 <= 1 )) && return 1
+  if ps -o comm= -p "$3" | egrep -q "$2"; then
+    echo -n "$1"
+    return 0
   fi
+  _hp_grep_parents "$1" "$2" $(ps -o ppid= -p $3)
+}
+
+# Figure out what sort of session we're in.
+# Populates _hp_login_user with the name of the user we logged in as (not
+# necessarily the user we are right now, if su is involved!)
+# Populates _hp_session with a list of strings indicating the kind of session
+# we're in.
+function _hp_get_session {
   _hp_login_user="$(logname 2>/dev/null || echo "$LOGNAME")"
+  _hp_session=(
+    $(_hp_grep_parents "ssh remote" ssh $PPID)
+    # We have no way of checking if the user is attached to tmux/screen remotely
+    # or not, so we make the worst case assumption that it's remote.
+    $(_hp_grep_parents "screen remote" 'tmux|screen' $PPID)
+    $(_hp_grep_parents su '^(su|sudo)$' $PPID)
+  )
+
+  # Sessions that aren't remote are local.
+  if [[ ! ${_hp_session[(r)remote]} ]]; then
+    _hp_session+=(local)
+  fi
 }
 
 # Kill async processes and clear data, in case of re-source

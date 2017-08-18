@@ -55,10 +55,13 @@ _hp_conf=(
 # $_hp_f[cwd], the actual format used (since that's one of the most
 # likely components for customization.)
 
-typeset -A _hp_f=(
-  prompt           '$user_host${user_host:+ }$cwd $prompt_sym'
-  rprompt          ' $vc_info${vc_info:+ }$env$priv'
+# Rather than making them part of _hp_f or _hp_conf, we set PROMPT and RPROMPT
+# here so that whatever loads us can override them afterwards.
+setopt prompt_subst
+PROMPT='$(_hp_fmt_user_host)$(_hp_fmt_cwd) $(_hp_fmt_prompt_symbol)'
+RPROMPT=' $(_hp_fmt_vc_info)$(_hp_fmt_env)$(_hp_fmt_privileges)'
 
+typeset -A _hp_f=(
   cwd              "%F{cyan}%(5~,%-1~/…/%2~,%~)%f"
   env_proxy        "%F{green}º"
   prompt_sym       "%f• "
@@ -81,7 +84,7 @@ typeset -A _hp_f=(
   s_env            "%F{blue}"
   e_env            "%f"
   s_host           "%F{blue}@"
-  e_host           "%f"
+  e_host           "%f "
   s_vc             " %F{blue}"
   e_vc             "%f"
   s_vc_branch      " %F{blue}"
@@ -210,7 +213,7 @@ function _hp_fmt_hg {
     "${_hp_hgx[incoming]}" "${_hp_hgx[outgoing]}" "${_hp_hg[vc_root]##*/}"
 }
 
-function _hp_fmt_vc_info { _hp_fmt_git; _hp_fmt_hg } 
+function _hp_fmt_vc_info { _hp_fmt_git; _hp_fmt_hg }
 
 function _hp_fmt_privileges {
   (( $_hp_conf[enable_priv] )) || return
@@ -244,17 +247,6 @@ function _hp_fmt_env {
 
 ## Putting it all together #############################################
 
-function _hp_set_prompts {
-  local user_host="$(_hp_fmt_user_host)"
-  local cwd="$(_hp_fmt_cwd)"
-  local prompt_sym="$(_hp_fmt_prompt_symbol)"
-  local vc_info="$(_hp_fmt_vc_info)"
-  local env="$(_hp_fmt_env)"
-  local priv="$(_hp_fmt_privileges)"
-  eval PROMPT="\"$_hp_f[prompt]\""
-  eval RPROMPT="\"$_hp_f[rprompt]\""
-}
-
 _hp_set_running=0
 _hp_set_rerun=0
 
@@ -265,7 +257,6 @@ function _hp_set {
   fi
   _hp_set_running=1
   while (( _hp_set_running )); do
-    _hp_set_prompts
     zle && zle .reset-prompt
     if (( _hp_set_rerun )); then
       _hp_set_rerun=0

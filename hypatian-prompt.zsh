@@ -33,6 +33,13 @@
 
 ## Configuration Options ###############################################
 
+# Configure the components used in the prompts. _hp calls commands like
+# _hp_fmt_user_host to simplify stringing components together. prompt_subst
+# is used so that the substitutions happen at prompt display time.
+setopt prompt_subst
+PROMPT='$(_hp user_host cwd prompt_symbol)'
+RPROMPT='$(_hp vc_info env privileges)'
+
 # Set after sourcing this using:
 #   _hp_conf[enable_async] = 0
 # and so on
@@ -57,12 +64,6 @@ _hp_conf=(
 # individual symbols with optional formatting, or in the case of
 # $_hp_f[cwd], the actual format used (since that's one of the most
 # likely components for customization.)
-
-# Rather than making them part of _hp_f or _hp_conf, we set PROMPT and RPROMPT
-# here so that whatever loads us can override them afterwards.
-setopt prompt_subst
-PROMPT='$(_hp user_host cwd prompt_symbol)'
-RPROMPT='$(_hp vc_info env privileges)'
 
 typeset -A _hp_f=(
   cwd              "%F{cyan}%(5~,%-1~/…/%2~,%~)%f "

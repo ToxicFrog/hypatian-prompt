@@ -58,15 +58,15 @@ _hp_conf=(
 # Rather than making them part of _hp_f or _hp_conf, we set PROMPT and RPROMPT
 # here so that whatever loads us can override them afterwards.
 setopt prompt_subst
-PROMPT='$(_hp_fmt_user_host)$(_hp_fmt_cwd) $(_hp_fmt_prompt_symbol)'
-RPROMPT=' $(_hp_fmt_vc_info)$(_hp_fmt_env)$(_hp_fmt_privileges)'
+PROMPT='$(_hp user_host cwd prompt_symbol)'
+RPROMPT='$(_hp vc_info env privileges)'
 
 typeset -A _hp_f=(
-  cwd              "%F{cyan}%(5~,%-1~/…/%2~,%~)%f"
+  cwd              "%F{cyan}%(5~,%-1~/…/%2~,%~)%f "
   env_proxy        "%F{green}º"
-  prompt_sym       "%b%f• "
-  prompt_sym_a     "%b%F{red}•%f "
-  prompt_sym_x     "%b%F{blue}•%f "
+  prompt_sym       "%b%u%s%f• "
+  prompt_sym_a     "%b%u%s%k%F{red}•%f "
+  prompt_sym_x     "%b%u%s%k%F{blue}•%f "
   user_auth_krb_ok "%F{green}†"
   user_auth_krb_no "%F{red}†"
   user_priv_root   "%F{red}√"
@@ -81,17 +81,21 @@ typeset -A _hp_f=(
   vc_outgoing      "%F{yellow}⇡"
   vc_diverged      "%F{red}⇅"
 
-  s_env            "%F{blue}"
+  s_env            " %F{blue}"
   e_env            "%f"
   s_host           "%F{blue}@"
   e_host           "%f "
+  s_priv           "%F{blue}"
+  e_priv           "%f"
   s_vc             " %F{blue}"
   e_vc             "%f"
   s_vc_branch      " %F{blue}"
   e_vc_branch      "%F{blue}"
-  s_vc_file_status " %F{blue}"
+  s_vc_status      " %F{blue}"
+  e_vc_status      "%f"
+  s_vc_file_status "%F{blue}"
   e_vc_file_status "%F{blue}"
-  s_vc_repo_status " %F{blue}"
+  s_vc_repo_status "%F{blue}"
   e_vc_repo_status "%F{blue}"
   s_vc_root        "%F{blue}["
   e_vc_root        "]%F{blue}"
@@ -174,27 +178,40 @@ function _hp_fmt_prompt_symbol {
 # _hp_fmt_vcs fmt_name branch nrof_staged _unstaged _conflicted _untracked \
 #     nrof_incoming _outgoing vc_root
 function _hp_fmt_vcs {
-  echo -n "$_hp_f[s_vc]$_hp_f[$1]"
-  if (( $_hp_conf[enable_vc_root] )) && [ -n "$9" ]; then
-    echo -n "$_hp_f[s_vc_root]$9$_hp_f[e_vc_root]"
+  local fmt_name="$1"
+  local branch="$2"
+  local staged="${3:-0}"
+  local changed="${4:-0}"
+  local unresolved="${5:-0}"
+  local untracked="${6:-0}"
+  local incoming="${7:-0}"
+  local outgoing="${8:-0}"
+  local vc_root="$9"
+  echo -n "$_hp_f[s_vc]$_hp_f[$fmt_name]"
+  if (( $_hp_conf[enable_vc_root] )) && [ -n "$vc_root" ]; then
+    echo -n "$_hp_f[s_vc_root]$vc_root$_hp_f[e_vc_root]"
   fi
-  echo -n "$_hp_f[s_vc_branch]$2$_hp_f[e_vc_branch]"
-  if (( ${3:-0} + ${4:-0} + ${5:-0} + ${6:-0} > 0 )); then
-    echo -n "$_hp_f[s_vc_file_status]"
-    (( ${3:-0} > 0 )) && echo -n "$_hp_f[vc_staged]"
-    (( ${4:-0} > 0 )) && echo -n "$_hp_f[vc_changed]"
-    (( ${5:-0} > 0 )) && echo -n "$_hp_f[vc_unresolved]"
-    (( ${6:-0} > 0 )) && echo -n "$_hp_f[vc_untracked]"
-    echo -n "$_hp_f[e_vc_file_status]"
-  fi
-  if (( ${7:-0} + ${8:-0} > 0 )); then
-    echo -n "$_hp_f[s_vc_repo_status]"
-    case "${7:-0},${8:-0}" in
-      *,0) echo -n "${_hp_f[vc_incoming]}" ;;
-      0,*) echo -n "${_hp_f[vc_outgoing]}" ;;
-      *,*) echo -n "${_hp_f[vc_diverged]}" ;;
-    esac
-    echo -n "$_hp_f[e_vc_repo_status]"
+  echo -n "$_hp_f[s_vc_branch]$branch$_hp_f[e_vc_branch]"
+  if (( $staged + $changed + $unresolved + $untracked + $incoming + $outgoing > 0 )); then
+    echo -n "$_hp_f[s_vc_status]"
+    if (( $staged + $changed + $unresolved + $untracked > 0 )); then
+      echo -n "$_hp_f[s_vc_file_status]"
+      (( $staged > 0 )) && echo -n "$_hp_f[vc_staged]"
+      (( $changed > 0 )) && echo -n "$_hp_f[vc_changed]"
+      (( $unresolved > 0 )) && echo -n "$_hp_f[vc_unresolved]"
+      (( $untracked > 0 )) && echo -n "$_hp_f[vc_untracked]"
+      echo -n "$_hp_f[e_vc_file_status]"
+    fi
+    if (( $incoming + $outgoing > 0 )); then
+      echo -n "$_hp_f[s_vc_repo_status]"
+      case "$incoming,$outgoing" in
+        *,0) echo -n "${_hp_f[vc_incoming]}" ;;
+        0,*) echo -n "${_hp_f[vc_outgoing]}" ;;
+        *,*) echo -n "${_hp_f[vc_diverged]}" ;;
+      esac
+      echo -n "$_hp_f[e_vc_repo_status]"
+    fi
+    echo -n "$_hp_f[e_vc_status]"
   fi
   echo -n "$_hp_f[e_vc]"
 }
@@ -217,6 +234,7 @@ function _hp_fmt_vc_info { _hp_fmt_git; _hp_fmt_hg }
 
 function _hp_fmt_privileges {
   (( $_hp_conf[enable_priv] )) || return
+  echo -n "$_hp_f[s_priv]"
   local _hp_priv_root=0
   if (( EUID == 0 )); then
     _hp_priv_root=1
@@ -233,7 +251,7 @@ function _hp_fmt_privileges {
       echo -n "$_hp_f[user_auth_krb_no]"
     fi
   fi
-  echo -n ' '
+  echo -n "$_hp_f[e_priv]"
 }
 
 function _hp_fmt_env {
@@ -243,6 +261,14 @@ function _hp_fmt_env {
     echo -n "$_hp_f[env_proxy]"
   fi
   echo -n "$_hp_f[e_env]"
+}
+
+# Function to ease calling formatters from PROMPT and RPROMPT
+function _hp {
+  while [[ $1 ]]; do
+    "_hp_fmt_$1"
+    shift
+  done
 }
 
 ## Putting it all together #############################################

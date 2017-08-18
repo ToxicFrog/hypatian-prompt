@@ -6,6 +6,9 @@
 # Requires zsh 5.3+
 
 # Copyright 2017 Katherine Anne Prevost
+# Portions copyright 2017 Google
+#
+# Contributions from Ben Kelly
 #
 # This work is licensed under a Creative Commons Attribution 4.0
 # International License.

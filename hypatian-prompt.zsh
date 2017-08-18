@@ -305,19 +305,42 @@ function _hp_async_git {
   typeset -p _hp_git
 }
 
+# _hp_git_remote_branch <remote> <branch>
+# Get the sha the branch points to on the remote using `git ls-remote`.
+# If that fails, look for our local mirror in refs/remotes/
+function _hp_git_remote_ref {
+  \git ls-remote "$1" "refs/heads/$2" 2>/dev/null | cut -f1 \
+    || \git show-ref --verify -s "refs/remotes/$1/$2" 2>/dev/null
+}
+
+function _hp_git_delta {
+  local upstream="$(\git rev-parse --symbolic-full-name "HEAD@{$1}" 2>&1)"
+  if [[ $upstream ]]; then
+    local upstream_remote="$(echo "${upstream}" | cut -d/ -f3)"
+    local upstream_branch="$(echo "${upstream}" | cut -d/ -f4-)"
+    local upstream_ref="$(_hp_git_remote_ref "$upstream_remote" "$upstream_branch")"
+
+    # If we have upstream_ref locally, we can get an exact count.
+    if [[ $upstream_ref ]] && \git cat-file -e "${upstream_ref}"; then
+      \git rev-list --count "$2${upstream_ref}$3" 2>/dev/null
+
+    else
+      # Otherwise, either:
+      # - it's a commit on the remote we don't have yet, or
+      # - we have a remote configured but have never fetched from it and can't
+      #   ls-remote it
+      # In either case, assume we have at least one incoming commit.
+      echo -n 1
+    fi
+  fi
+}
+
 function _hp_async_gitx {
   _hp_gitx=()
   if (( $_hp_conf[enable_vc_git] )) && (( $+commands[git] )) && _hp_search_up .git >/dev/null; then
-    branch="$(_hp_git_branch)"
-    remote="$(\git config --get branch.${branch}.remote 2>/dev/null)"
-    if [[ -n "$remote" ]]; then
-      remote_branch="$(\git config --get branch.${branch}.merge 2>/dev/null)"
-      if [[ -n "$remote_branch" ]]; then
-        remote_branch="${remote_branch/refs\/heads/refs/remotes/$remote}"
-        _hp_gitx[incoming]="$(\git rev-list --count HEAD..$remote_branch 2>/dev/null)"
-        _hp_gitx[outgoing]="$(\git rev-list --count $remote_branch..HEAD 2>/dev/null)"
-      fi
-    fi
+    local branch="$(_hp_git_branch)"
+    _hp_gitx[incoming]="$(_hp_git_delta upstream HEAD.. '')"
+    _hp_gitx[outgoing]="$(_hp_git_delta push '' ..HEAD)"
   fi
   typeset -p _hp_gitx
 }

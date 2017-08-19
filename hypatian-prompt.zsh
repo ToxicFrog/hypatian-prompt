@@ -66,7 +66,9 @@ _hp_conf=(
 # likely components for customization.)
 
 typeset -A _hp_f=(
-  cwd              "%F{cyan}%(5~,%-1~/…/%2~,%~)%f "
+  prompt           '$(_hp user_host cwd) $(_hp prompt_symbol)'
+  rprompt          ' $(_hp vc_info env privileges)'
+  cwd              "%F{cyan}%(5~,%-1~/…/%2~,%~)%f"
   env_proxy        "%F{green}º"
   prompt_sym       "%b%u%s%f• "
   prompt_sym_a     "%b%u%s%k%F{red}•%f "
@@ -112,11 +114,25 @@ typeset -A _hp_f=(
 ## Async Storage #######################################################
 
 # Set up temporary files for async items
-if [ -z $_hp_async_file ]; then
+if [[ ! $_hp_async_file ]]; then
   _hp_async_file="$(mktemp)"
 fi
-if [ -z $_hp_async_x_file ]; then
+if [[ ! $_hp_async_x_file ]]; then
   _hp_async_x_file="$(mktemp)"
+fi
+
+# Mutex used to guard prompt redrawing.
+# The prompt is drawn (up to) three times: as soon as it's done initializing,
+# after the fast async process finishes, and after the slow async process
+# finishes. The latter two are triggered by signals, which can potentially
+# arrive in the middle of a prompt redraw, causing graphical glitches.
+# So, the mutex guards both the `zle .reset-prompt` call that actually redraws
+# the prompt, and the `kill` calls used to trigger additional prompt redraws.
+# (Why not just guard the redraw? Because signal handlers happen in the same
+# process as the "main" redraw, and recursive flock()s are a no-op, so that
+# wouldn't provide any actual protection.)
+if [[ ! $_hp_mutex ]]; then
+  _hp_mutex="$(mktemp)"
 fi
 
 # Associative arrays for async data results
@@ -277,24 +293,7 @@ function _hp {
 
 ## Putting it all together #############################################
 
-_hp_set_running=0
-_hp_set_rerun=0
-
-function _hp_set {
-  if (( _hp_set_running )); then
-    _hp_set_rerun=1
-    return
-  fi
-  _hp_set_running=1
-  while (( _hp_set_running )); do
-    zle && zle .reset-prompt
-    if (( _hp_set_rerun )); then
-      _hp_set_rerun=0
-    else
-      _hp_set_running=0
-    fi
-  done
-}
+function _hp_set { zle && zle reset-prompt; }
 
 ## Asynchronous git process (slow and fast) ############################
 
@@ -434,10 +433,9 @@ function _hp_async {
     _hp_async_hg
     _hp_async_sudo
     _hp_async_krb
-    kill -WINCH $$ >/dev/null 2>&1
+    flock -F "${_hp_mutex}" kill -WINCH $$ >/dev/null 2>&1
   ) > "$_hp_async_file" &!
   _hp_async_pid=$!
-  _hp_set
 }
 
 function _hp_async_cb {
@@ -462,9 +460,9 @@ function _hp_async_x {
   (
     _hp_async_gitx
     _hp_async_hgx
-    kill -USR1 $$ >/dev/null 2>&1) > "$_hp_async_x_file" &!
+    flock -F "${_hp_mutex}" kill -USR1 $$ >/dev/null 2>&1
+  ) > "$_hp_async_x_file" &!
   _hp_async_x_pid=$!
-  _hp_set
 }
 
 function _hp_async_x_cb {
@@ -489,9 +487,10 @@ function _hp_chpwd {
 }
 
 function _hp_precmd {
+  PROMPT='%{$(flock 9)%}'"${_hp_f[prompt]}"
+  RPROMPT="${_hp_f[rprompt]}"'%{$(flock -u 9)%}'
   _hp_async
   _hp_async_x
-  _hp_set
 }
 
 ## Initial setup and hooking the shell #################################
@@ -530,6 +529,15 @@ function _hp_get_session {
   fi
 }
 
+function _hp_atexit {
+  _hp_async_kill
+  _hp_async_x_kill
+  rm -f "${_hp_async_file}" "${_hp_async_x_file}" "${_hp_mutex}"
+}
+
+setopt prompt_subst
+exec 9> "${_hp_mutex}"
+
 # Kill async processes and clear data, in case of re-source
 _hp_chpwd
 
@@ -543,3 +551,4 @@ autoload -Uz add-zsh-hook
 # Hook chpwd to reset processes, precmd to generate the prompt
 add-zsh-hook chpwd _hp_chpwd
 add-zsh-hook precmd _hp_precmd
+add-zsh-hook zshexit _hp_atexit

@@ -86,6 +86,7 @@ typeset -A _hp_f=(
   vc_incoming      "%F{yellow}⇣"
   vc_outgoing      "%F{yellow}⇡"
   vc_diverged      "%F{red}⇅"
+  vc_error         "%F{red}⁉"
 
   s_env            " %F{blue}"
   e_env            "%f"
@@ -198,15 +199,18 @@ function _hp_fmt_prompt_symbol {
 function _hp_fmt_vcs_repo_status {
   local incoming="${1:=0}"
   local outgoing="${2:=0}"
+  local errors="${3:=0}"
 
-  (( incoming + outgoing )) || return
+  (( incoming + outgoing + errors )) || return
 
   echo -n "$_hp_f[s_vc_repo_status]"
   case "$incoming,$outgoing" in
+    0,0) ;;
     *,0) echo -n "${_hp_f[vc_incoming]}" ;;
     0,*) echo -n "${_hp_f[vc_outgoing]}" ;;
     *,*) echo -n "${_hp_f[vc_diverged]}" ;;
   esac
+  (( $errors )) && echo -n "${_hp_f[vc_error]}"
   echo -n "$_hp_f[e_vc_repo_status]"
 }
 
@@ -221,12 +225,12 @@ function _hp_fmt_vcs {
   fi
   [[ ${info[branch]} ]] &&  echo -n "$_hp_f[s_vc_branch]${info[branch]}$_hp_f[e_vc_branch]"
 
-  for key in staged changed unresolved untracked incoming outgoing; do
+  for key in staged changed unresolved untracked incoming outgoing errors; do
     local $key=${info[$key]:=0}
   done
 
   if (( $staged + $changed + $unresolved + $untracked
-        + $incoming + $outgoing > 0 )); then
+        + $incoming + $outgoing + $errors > 0 )); then
     echo -n "$_hp_f[s_vc_status]"
     if (( $staged + $changed + $unresolved + $untracked > 0 )); then
       echo -n "$_hp_f[s_vc_file_status]"
@@ -236,7 +240,7 @@ function _hp_fmt_vcs {
       (( $untracked > 0 )) && echo -n "$_hp_f[vc_untracked]"
       echo -n "$_hp_f[e_vc_file_status]"
     fi
-    _hp_fmt_vcs_repo_status "$incoming" "$outgoing"
+    _hp_fmt_vcs_repo_status "$incoming" "$outgoing" "$errors"
     echo -n "$_hp_f[e_vc_status]"
   fi
   echo -n "$_hp_f[e_vc]"
@@ -337,32 +341,49 @@ function _hp_git_remote_ref {
 
 function _hp_git_delta {
   local upstream="$(\git rev-parse --symbolic-full-name "HEAD@{$1}" 2>/dev/null)"
-  if [[ $upstream ]]; then
-    local upstream_remote="$(echo "${upstream}" | cut -d/ -f3)"
-    local upstream_branch="$(echo "${upstream}" | cut -d/ -f4-)"
-    local upstream_ref="$(_hp_git_remote_ref "$upstream_remote" "$upstream_branch")"
-
-    # If we have upstream_ref locally, we can get an exact count.
-    if [[ $upstream_ref ]] && \git cat-file -e "${upstream_ref}"; then
-      \git rev-list --count "$2${upstream_ref}$3" 2>/dev/null
-
-    else
-      # Otherwise, either:
-      # - it's a commit on the remote we don't have yet, or
-      # - we have a remote configured but have never fetched from it and can't
-      #   ls-remote it
-      # In either case, assume we have at least one incoming commit.
-      echo -n 1
-    fi
+  if [[ ! $upstream ]]; then
+    # No upstream configured.
+    echo -n 0
+    return 0
   fi
+
+  # Expand the ref -- as it exists on the remote if possible, otherwise as it
+  # existed last time we looked at it.
+  local upstream_remote="$(echo "${upstream}" | cut -d/ -f3)"
+  local upstream_branch="$(echo "${upstream}" | cut -d/ -f4-)"
+  local upstream_ref="$(_hp_git_remote_ref "$upstream_remote" "$upstream_branch")"
+
+  if [[ ! $upstream_ref ]]; then
+    # Oops! We have it configured but we have no idea what it actually is.
+    # Report an error.
+    echo -n 0
+    return 1
+  fi
+
+  # If we have upstream_ref locally, we can get an exact count.
+  if \git cat-file -e "${upstream_ref}"; then
+    \git rev-list --count "$(printf "$2" "$upstream_ref")" 2>/dev/null
+    return 0
+  fi
+
+  # Otherwise our behaviour depends on whether it's upstream (fetch) or push.
+  # Upstream we assume not having it means we have at least one incoming commit.
+  # Push we diff against the most recent version we have.
+  case $1 in
+    upstream) echo -n 1;;
+    push) \git rev-list --count "$(printf "$2" "$upstream")";;
+    *) echo -n 0; return 0;;
+  esac
 }
 
 function _hp_async_gitx {
   _hp_gitx=()
   if (( $_hp_conf[enable_vc_git] )) && (( $+commands[git] )) && _hp_search_up .git >/dev/null; then
     local branch="$(_hp_git_branch)"
-    _hp_gitx[incoming]="$(_hp_git_delta upstream HEAD.. '')"
-    _hp_gitx[outgoing]="$(_hp_git_delta push '' ..HEAD)"
+    _hp_gitx[incoming]="$(_hp_git_delta upstream 'HEAD..%s')"
+    (( _hp_gitx[errors] += $? ))
+    _hp_gitx[outgoing]="$(_hp_git_delta push '%s..HEAD')"
+    (( _hp_gitx[errors] += $? ))
   fi
   typeset -p _hp_gitx
 }

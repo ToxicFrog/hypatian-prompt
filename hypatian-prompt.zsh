@@ -195,24 +195,38 @@ function _hp_fmt_prompt_symbol {
   fi
 }
 
-# _hp_fmt_vcs fmt_name branch nrof_staged _unstaged _conflicted _untracked \
-#     nrof_incoming _outgoing vc_root
+function _hp_fmt_vcs_repo_status {
+  local incoming="${1:=0}"
+  local outgoing="${2:=0}"
+
+  (( incoming + outgoing )) || return
+
+  echo -n "$_hp_f[s_vc_repo_status]"
+  case "$incoming,$outgoing" in
+    *,0) echo -n "${_hp_f[vc_incoming]}" ;;
+    0,*) echo -n "${_hp_f[vc_outgoing]}" ;;
+    *,*) echo -n "${_hp_f[vc_diverged]}" ;;
+  esac
+  echo -n "$_hp_f[e_vc_repo_status]"
+}
+
+# _hp_fmt_vcs fmt_name <key value> <key value>...
 function _hp_fmt_vcs {
-  local fmt_name="$1"
-  local branch="$2"
-  local staged="${3:-0}"
-  local changed="${4:-0}"
-  local unresolved="${5:-0}"
-  local untracked="${6:-0}"
-  local incoming="${7:-0}"
-  local outgoing="${8:-0}"
-  local vc_root="$9"
+  local fmt_name="$1"; shift
+  typeset -A info=("$@")
+
   echo -n "$_hp_f[s_vc]$_hp_f[$fmt_name]"
-  if (( $_hp_conf[enable_vc_root] )) && [ -n "$vc_root" ]; then
-    echo -n "$_hp_f[s_vc_root]$vc_root$_hp_f[e_vc_root]"
+  if (( $_hp_conf[enable_vc_root] )) && [[ -n "${info[vc_root]}" ]]; then
+    echo -n "$_hp_f[s_vc_root]${info[vc_root]}$_hp_f[e_vc_root]"
   fi
-  echo -n "$_hp_f[s_vc_branch]$branch$_hp_f[e_vc_branch]"
-  if (( $staged + $changed + $unresolved + $untracked + $incoming + $outgoing > 0 )); then
+  [[ ${info[branch]} ]] &&  echo -n "$_hp_f[s_vc_branch]${info[branch]}$_hp_f[e_vc_branch]"
+
+  for key in staged changed unresolved untracked incoming outgoing; do
+    local $key=${info[$key]:=0}
+  done
+
+  if (( $staged + $changed + $unresolved + $untracked
+        + $incoming + $outgoing > 0 )); then
     echo -n "$_hp_f[s_vc_status]"
     if (( $staged + $changed + $unresolved + $untracked > 0 )); then
       echo -n "$_hp_f[s_vc_file_status]"
@@ -222,15 +236,7 @@ function _hp_fmt_vcs {
       (( $untracked > 0 )) && echo -n "$_hp_f[vc_untracked]"
       echo -n "$_hp_f[e_vc_file_status]"
     fi
-    if (( $incoming + $outgoing > 0 )); then
-      echo -n "$_hp_f[s_vc_repo_status]"
-      case "$incoming,$outgoing" in
-        *,0) echo -n "${_hp_f[vc_incoming]}" ;;
-        0,*) echo -n "${_hp_f[vc_outgoing]}" ;;
-        *,*) echo -n "${_hp_f[vc_diverged]}" ;;
-      esac
-      echo -n "$_hp_f[e_vc_repo_status]"
-    fi
+    _hp_fmt_vcs_repo_status "$incoming" "$outgoing"
     echo -n "$_hp_f[e_vc_status]"
   fi
   echo -n "$_hp_f[e_vc]"
@@ -238,16 +244,12 @@ function _hp_fmt_vcs {
 
 function _hp_fmt_git {
   (( ${_hp_git[active]:-0} )) || return
-  _hp_fmt_vcs vc_git "${_hp_git[branch]}" \
-    "$_hp_git[staged]" "$_hp_git[unstaged]" "$_hp_git[unresolved]" "$_hp_git[untracked]" \
-    "${_hp_gitx[incoming]}" "${_hp_gitx[outgoing]}" "${_hp_git[vc_root]##*/}"
+  _hp_fmt_vcs vc_git "${(kv)_hp_git[@]}" "${(kv)_hp_gitx[@]}"
 }
 
 function _hp_fmt_hg {
-  (( ${_hp_hg[active]:-0} )) || return
-  _hp_fmt_vcs vc_hg "${_hp_hg[branch]}" \
-    "$_hp_hg[staged]" "$_hp_hg[unstaged]" "$_hp_hg[unresolved]" "$_hp_hg[untracked]" \
-    "${_hp_hgx[incoming]}" "${_hp_hgx[outgoing]}" "${_hp_hg[vc_root]##*/}"
+  (( ${git_hp_hg[active]:-0} )) || return
+  _hp_fmt_vcs vc_hg "${(kv)_hp_hg[@]}" "${(kv)_hp_hgx[@]}"
 }
 
 function _hp_fmt_vc_info { _hp_fmt_git; _hp_fmt_hg }

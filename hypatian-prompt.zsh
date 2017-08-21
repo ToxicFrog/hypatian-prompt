@@ -168,7 +168,7 @@ function _hp_test {
 ## Formatting Parts of the Prompt ######################################
 
 function _hp_fmt_user {
-  if (( EUID == 0 )) || [ "$USER" != "$_hp_login_user" ]; then
+  if [[ $EUID == 0 || "$USER" != "$_hp_login_user" || "${_hp_session[(r)remote]}" ]] ; then
     echo -n "%(!,$_hp_f[s_user_root]%n$_hp_f[e_user_root],$_hp_f[s_user]%n$_hp_f[e_user])"
   fi
 }

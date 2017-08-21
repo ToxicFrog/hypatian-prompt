@@ -320,7 +320,7 @@ function _hp_async_git {
       _hp_git[branch]="$(_hp_git_branch)"
       _hp_git[staged]="$(
         LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^[^ ?]' | \wc -l)"
-      _hp_git[unstaged]="$(
+      _hp_git[changed]="$(
         LC_ALL=C \git status --porcelain 2>/dev/null| \grep '^.[^ ?]' | \wc -l)"
       _hp_git[untracked]="$(
         LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^??' | \wc -l)"

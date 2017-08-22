@@ -57,6 +57,9 @@ _hp_conf=(
   enable_auth_krb  1
   enable_vc_git    1
   enable_vc_hg     1
+
+  async            "hg git krb sudo"
+  asyncx           "hg git"
 )
 
 # Formatting for prompt components. s_*, e_* pairs are used at start
@@ -452,10 +455,9 @@ function _hp_async {
   (( ${_hp_async_pid:-0} > 0 )) && return
   trap _hp_async_cb WINCH
   (
-    _hp_async_git
-    _hp_async_hg
-    _hp_async_sudo
-    _hp_async_krb
+    for fn in ${(ps: :)_hp_conf[async]}; do
+      _hp_async_$fn
+    done
     flock -F "${_hp_mutex}" kill -WINCH $$ >/dev/null 2>&1
   ) > "$_hp_async_file" &!
   _hp_async_pid=$!
@@ -481,8 +483,9 @@ function _hp_async_x {
   (( ${_hp_async_x_pid:-0} > 0 )) && return
   trap _hp_async_x_cb USR1
   (
-    _hp_async_gitx
-    _hp_async_hgx
+    for fn in ${(ps: :)_hp_conf[asyncx]}; do
+      _hp_async_${fn}x
+    done
     flock -F "${_hp_mutex}" kill -USR1 $$ >/dev/null 2>&1
   ) > "$_hp_async_x_file" &!
   _hp_async_x_pid=$!

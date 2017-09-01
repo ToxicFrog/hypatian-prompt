@@ -47,7 +47,6 @@ RPROMPT='$(_hp vc_info env privileges)'
 typeset -A _hp_conf
 _hp_conf=(
   enable_async     1
-  enable_async_x   1
   enable_env       1
   enable_env_proxy 1
   enable_cwd       1
@@ -58,8 +57,7 @@ _hp_conf=(
   enable_vc_git    1
   enable_vc_hg     1
 
-  async            "hg git krb sudo"
-  asyncx           "hg git"
+  async            "hg git krb sudo hgx gitx"
 )
 
 # Formatting for prompt components. s_*, e_* pairs are used at start
@@ -75,7 +73,6 @@ typeset -A _hp_f=(
   env_proxy        "%F{green}º"
   prompt_sym       "%b%u%s%f• "
   prompt_sym_a     "%b%u%s%k%F{red}•%f "
-  prompt_sym_x     "%b%u%s%k%F{blue}•%f "
   user_auth_krb_ok "%F{green}†"
   user_auth_krb_no "%F{red}†"
   user_priv_root   "%F{red}√"
@@ -114,30 +111,6 @@ typeset -A _hp_f=(
   s_user_root      "%F{red}"
   e_user_root      "%f"
 )
-
-## Async Storage #######################################################
-
-# Set up temporary files for async items
-if [[ ! $_hp_async_file ]]; then
-  _hp_async_file="$(mktemp)"
-fi
-if [[ ! $_hp_async_x_file ]]; then
-  _hp_async_x_file="$(mktemp)"
-fi
-
-# Mutex used to guard prompt redrawing.
-# The prompt is drawn (up to) three times: as soon as it's done initializing,
-# after the fast async process finishes, and after the slow async process
-# finishes. The latter two are triggered by signals, which can potentially
-# arrive in the middle of a prompt redraw, causing graphical glitches.
-# So, the mutex guards both the `zle .reset-prompt` call that actually redraws
-# the prompt, and the `kill` calls used to trigger additional prompt redraws.
-# (Why not just guard the redraw? Because signal handlers happen in the same
-# process as the "main" redraw, and recursive flock()s are a no-op, so that
-# wouldn't provide any actual protection.)
-if [[ ! $_hp_mutex ]]; then
-  _hp_mutex="$(mktemp)"
-fi
 
 ## Utility functions ###################################################
 
@@ -181,10 +154,8 @@ function _hp_fmt_cwd {
 }
 
 function _hp_fmt_prompt_symbol {
-  if (( ${_hp_async_pid:-0} > 0 )); then
+  if zpty -L | cut -d' ' -f2 | fgrep -q _hp_async; then
     echo -n "$_hp_f[prompt_sym_a]"
-  elif (( ${_hp_async_x_pid:-0} > 0 )); then
-    echo -n "$_hp_f[prompt_sym_x]"
   else
     echo -n "$_hp_f[prompt_sym]"
   fi
@@ -242,12 +213,12 @@ function _hp_fmt_vcs {
 
 function _hp_fmt_git {
   (( ${_hp_git[active]:-0} )) || return
-  _hp_fmt_vcs vc_git "${(kv)_hp_git[@]}" "${(kv)_hp_gitx[@]}"
+  _hp_fmt_vcs vc_git ${(kv)_hp_git[@]} ${(kv)_hp_gitx[@]}
 }
 
 function _hp_fmt_hg {
   (( ${git_hp_hg[active]:-0} )) || return
-  _hp_fmt_vcs vc_hg "${(kv)_hp_hg[@]}" "${(kv)_hp_hgx[@]}"
+  _hp_fmt_vcs vc_hg ${(kv)_hp_hg[@]} ${(kv)_hp_hgx[@]}
 }
 
 function _hp_fmt_vc_info { _hp_fmt_git; _hp_fmt_hg }
@@ -299,83 +270,65 @@ for lib in "$(dirname "$0")"/async-*.zsh; do
   source "$lib"
 done
 
-## Fast asynchronous process ###########################################
+## Asynchronous process runners ########################################
+
+zmodload zsh/zpty
+typeset -A _hp_async_fds=()
+
+function _hp_async_run_all {
+  (( $_hp_conf[enable_async] )) || return
+  for fn in ${(ps: :)_hp_conf[async]}; do
+    # This will start a new run if one isn't already going, and will fail if
+    # one is.
+    zpty _hp_async_$fn _hp_async_run_one $fn 2>/dev/null
+    _hp_async_fds[$REPLY]=_hp_async_$fn
+    zle -F $REPLY _hp_async_collect
+  done
+}
+
+function _hp_async_run_one {
+  # output LF rather than CR LF
+  stty -onlcr
+
+  # Workaround a bug in older versions of zsh where exiting zptys kill their
+  # siblings.
+  function zshexit {
+    kill -KILL $$
+    sleep 1 # Block for long enough for the signal to come through
+  }
+
+  _hp_async_$1
+}
+
+function _hp_async_collect {
+  local name=${_hp_async_fds[$1]}
+
+  # Remove the handler from the fd
+  zle -F $1
+  unset "_hp_async_fds[$1]"
+
+  eval "$(zpty -r $name)"
+  zpty -d $name
+  zle && zle reset-prompt
+}
 
 function _hp_async_kill {
-  if (( ${_hp_async_pid:-0} > 0 )); then
-    kill -KILL "$_hp_async_pid" >/dev/null 2>&1
-    _hp_async_pid=0
-  fi
-}
-
-function _hp_async {
-  # We kill on directory change, otherwise keep working
-  (( $_hp_conf[enable_async] )) || return
-  (( ${_hp_async_pid:-0} > 0 )) && return
-  trap _hp_async_cb WINCH
-  (
-    for fn in ${(ps: :)_hp_conf[async]}; do
-      _hp_async_$fn
-    done
-    flock -F "${_hp_mutex}" kill -WINCH $$ >/dev/null 2>&1
-  ) > "$_hp_async_file" &!
-  _hp_async_pid=$!
-}
-
-function _hp_async_cb {
-  . "$_hp_async_file"
-  _hp_async_pid=0
-  _hp_set
-}
-
-## Slow asynchronous process ###########################################
-
-function _hp_async_x_kill {
-  if (( ${_hp_async_x_pid:-0} > 0 )); then
-    kill -KILL "$_hp_async_x_pid" >/dev/null 2>&1
-    _hp_async_x_pid=0
-  fi
-}
-
-function _hp_async_x {
-  (( $_hp_conf[enable_async_x] )) || return
-  (( ${_hp_async_x_pid:-0} > 0 )) && return
-  trap _hp_async_x_cb USR1
-  (
-    for fn in ${(ps: :)_hp_conf[asyncx]}; do
-      _hp_async_${fn}x
-    done
-    flock -F "${_hp_mutex}" kill -USR1 $$ >/dev/null 2>&1
-  ) > "$_hp_async_x_file" &!
-  _hp_async_x_pid=$!
-}
-
-function _hp_async_x_cb {
-  . "$_hp_async_x_file"
-  _hp_async_x_pid=0
-  _hp_set
+  for fd in ${(k)_hp_async_fds[@]}; do
+    zle -F $fd
+    zpty -d "${_hp_async_fds[$fd]}"
+  done
 }
 
 ## Shell callbacks #####################################################
 
 function _hp_chpwd {
   _hp_async_kill
-  _hp_async_x_kill
-  unset _hp_vc_root
-  _hp_git=()
-  _hp_hg=()
-  _hp_vc_root=""
-  _hp_priv_sudo=0
-  _hp_auth_krb=""
-  _hp_gitx=()
-  _hp_hgx=()
 }
 
 function _hp_precmd {
-  PROMPT='%{$(flock 9)%}'"${_hp_f[prompt]}"
-  RPROMPT="${_hp_f[rprompt]}"'%{$(flock -u 9)%}'
-  _hp_async
-  _hp_async_x
+  PROMPT="${_hp_f[prompt]}"
+  RPROMPT="${_hp_f[rprompt]}"
+  _hp_async_run_all
 }
 
 ## Initial setup and hooking the shell #################################
@@ -414,14 +367,7 @@ function _hp_get_session {
   fi
 }
 
-function _hp_atexit {
-  _hp_async_kill
-  _hp_async_x_kill
-  rm -f "${_hp_async_file}" "${_hp_async_x_file}" "${_hp_mutex}"
-}
-
 setopt prompt_subst
-exec 9> "${_hp_mutex}"
 
 # Kill async processes and clear data, in case of re-source
 _hp_chpwd
@@ -436,4 +382,3 @@ autoload -Uz add-zsh-hook
 # Hook chpwd to reset processes, precmd to generate the prompt
 add-zsh-hook chpwd _hp_chpwd
 add-zsh-hook precmd _hp_precmd
-add-zsh-hook zshexit _hp_atexit

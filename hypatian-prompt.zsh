@@ -211,39 +211,7 @@ function _hp_fmt_vcs {
   echo -n "$_hp_f[e_vc]"
 }
 
-function _hp_fmt_git {
-  (( ${_hp_git[active]:-0} )) || return
-  _hp_fmt_vcs vc_git ${(kv)_hp_git[@]} ${(kv)_hp_gitx[@]}
-}
-
-function _hp_fmt_hg {
-  (( ${git_hp_hg[active]:-0} )) || return
-  _hp_fmt_vcs vc_hg ${(kv)_hp_hg[@]} ${(kv)_hp_hgx[@]}
-}
-
 function _hp_fmt_vc_info { _hp_fmt_git; _hp_fmt_hg }
-
-function _hp_fmt_privileges {
-  (( $_hp_conf[enable_priv] )) || return
-  echo -n "$_hp_f[s_priv]"
-  local _hp_priv_root=0
-  if (( EUID == 0 )); then
-    _hp_priv_root=1
-  fi
-  if (( $_hp_priv_root )); then
-    echo -n "$_hp_f[user_priv_root]"
-  elif (( $_hp_conf[enable_priv_sudo] )) && (( $_hp_priv_sudo )); then
-    echo -n "$_hp_f[user_priv_sudo]"
-  fi
-  if (( $_hp_conf[enable_auth_krb] )) && [ -n "$_hp_auth_krb" ]; then
-    if (( $_hp_auth_krb )); then
-      echo -n "$_hp_f[user_auth_krb_ok]"
-    else
-      echo -n "$_hp_f[user_auth_krb_no]"
-    fi
-  fi
-  echo -n "$_hp_f[e_priv]"
-}
 
 function _hp_fmt_env {
   (( $_hp_conf[enable_env] )) || return

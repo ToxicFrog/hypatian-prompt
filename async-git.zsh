@@ -1,5 +1,12 @@
 ## Asynchronous git process (slow and fast) ############################
 
+typeset -A _hp_git _hp_gitx
+
+function _hp_fmt_git {
+  (( ${_hp_git[active]:-0} )) || return
+  _hp_fmt_vcs vc_git ${(kv)_hp_git[@]} ${(kv)_hp_gitx[@]}
+}
+
 function _hp_git_branch {
   local branch
   if ! branch="$(\git symbolic-ref --short -q HEAD 2>/dev/null)"; then
@@ -9,7 +16,7 @@ function _hp_git_branch {
 }
 
 function _hp_async_git {
-  typeset -gA _hp_git=( active 0 )
+  _hp_git=( active 0 )
   if (( $_hp_conf[enable_vc_git] )) && (( $+commands[git] )); then
     if vc_root="$(_hp_search_up .git)"; then
       _hp_git[active]=1
@@ -74,7 +81,7 @@ function _hp_git_delta {
 }
 
 function _hp_async_gitx {
-  typeset -gA _hp_gitx=()
+  _hp_gitx=()
   if (( $_hp_conf[enable_vc_git] )) && (( $+commands[git] )) && _hp_search_up .git >/dev/null; then
     local branch="$(_hp_git_branch)"
     _hp_gitx[incoming]="$(_hp_git_delta upstream 'HEAD..%s')"

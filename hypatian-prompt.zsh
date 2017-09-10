@@ -248,9 +248,10 @@ function _hp_async_run_all {
   for fn in ${(ps: :)_hp_conf[async]}; do
     # This will start a new run if one isn't already going, and will fail if
     # one is.
-    zpty _hp_async_$fn _hp_async_run_one $fn 2>/dev/null
-    _hp_async_fds[$REPLY]=_hp_async_$fn
-    zle -F $REPLY _hp_async_collect
+    if zpty _hp_async_$fn _hp_async_run_one $fn 2>/dev/null; then
+      _hp_async_fds[$REPLY]=_hp_async_$fn
+      zle -F $REPLY _hp_async_collect
+    fi
   done
 }
 

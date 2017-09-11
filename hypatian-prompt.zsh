@@ -194,7 +194,7 @@ function _hp_fmt_vcs {
 
   echo -n "$_hp_f[s_vc]$_hp_f[$fmt_name]"
   if (( $_hp_conf[enable_vc_root] )) && [[ -n "${info[vc_root]}" ]]; then
-    echo -n "$_hp_f[s_vc_root]${info[vc_root]}$_hp_f[e_vc_root]"
+    echo -n "$_hp_f[s_vc_root]${info[vc_root]##*/}$_hp_f[e_vc_root]"
   fi
   [[ ${info[branch]} ]] &&  echo -n "$_hp_f[s_vc_branch]${info[branch]}$_hp_f[e_vc_branch]"
 

@@ -7,10 +7,14 @@ function _hp_fmt_hg {
   _hp_fmt_vcs vc_hg ${(kv)_hp_hg[@]} ${(kv)_hp_hgx[@]}
 }
 
+function _hp_hg_root {
+  hg root 2>/dev/null
+}
+
 function _hp_async_hg {
   _hp_hg=( active 0 )
   if (( $_hp_conf[enable_vc_hg] )) && (( $+commands[hg] )); then
-    if vc_root="$(_hp_search_up .hg)"; then
+    if vc_root="$(_hp_hg_root)"; then
       typeset -p _hp_vc_root
       _hp_hg[active]=1
       _hp_hg[vc_root]="$vc_root"
@@ -25,7 +29,7 @@ function _hp_async_hg {
 
 function _hp_async_hgx {
   _hp_hgx=()
-  if (( $_hp_conf[enable_vc_hg] )) && (( $+commands[hg] )) && _hp_search_up .hg >/dev/null; then
+  if (( $_hp_conf[enable_vc_hg] )) && (( $+commands[hg] )) && _hp_hg_root >/dev/null; then
     _hp_hgx[incoming]="$(\hg --config 'alias.incoming = incoming' incoming --quiet 2>/dev/null | wc -l)"
     _hp_hgx[outgoing]="$(\hg --config 'alias.outgoing = outgoing' outgoing --quiet 2>/dev/null | wc -l)"
   fi

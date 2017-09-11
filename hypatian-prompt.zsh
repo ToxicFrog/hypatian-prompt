@@ -114,19 +114,6 @@ typeset -A _hp_f=(
 
 ## Utility functions ###################################################
 
-function _hp_search_up {
-  local dir
-  dir="$PWD"
-  while [[ -n "$dir" ]]; do
-    if [[ -e "$dir/$1" ]]; then
-      echo "$dir"
-      return 0
-    fi
-    dir="${dir%/*}"
-  done
-  return 1
-}
-
 function _hp_test {
   _hp_session=(test local)
   _hp_login_user=nobody

@@ -55,6 +55,10 @@ _hp_conf=(
   # (e.g. enable_vc_git 0) turns off the corresponding async fetchers, even
   # if they're turned on here.
   async            "hg git krb sudo hgx gitx"
+
+  # File to log errors to. Mostly useful for debugging the prompt.
+  error_log        "/dev/null"
+  #error_log        "$HOME/.zprompt-errors"
 )
 
 # Formatting for prompt components. s_*, e_* pairs are used at start
@@ -270,7 +274,7 @@ function _hp_async_run_one {
     sleep 1 # Block for long enough for the signal to come through
   }
 
-  _hp_async_$1
+  _hp_async_$1 2>> ${_hp_conf[error_log]}
 }
 
 function _hp_async_collect {
@@ -280,7 +284,7 @@ function _hp_async_collect {
   zle -F $1
   unset "_hp_async_fds[$1]"
 
-  eval "$(zpty -r $name)"
+  eval "$(zpty -r $name)" 2>> ${_hp_conf[error_log]}
   zpty -d $name
   zle && zle reset-prompt
 }

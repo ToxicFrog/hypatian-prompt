@@ -33,30 +33,27 @@
 
 ## Configuration Options ###############################################
 
-# Configure the components used in the prompts. _hp calls commands like
-# _hp_fmt_user_host to simplify stringing components together. prompt_subst
-# is used so that the substitutions happen at prompt display time.
-setopt prompt_subst
-PROMPT='$(_hp user_host cwd prompt_symbol)'
-RPROMPT='$(_hp vc_info env privileges)'
-
+# Configure the prompt features.
 # Set after sourcing this using:
 #   _hp_conf[enable_async] = 0
-# and so on
-
+# and so on.
 typeset -A _hp_conf
 _hp_conf=(
-  enable_async     1
-  enable_env       1
-  enable_env_proxy 1
-  enable_cwd       1
-  enable_vc_root   1
-  enable_priv      1
-  enable_priv_sudo 1
-  enable_auth_krb  1
-  enable_vc_git    1
-  enable_vc_hg     1
+  enable_async     1  # Enable background fetching of information.
+  enable_env       1  # Show information about environment.
+  enable_env_proxy 1  #   Specifically, show $http_proxy.
+  enable_cwd       1  # Show current directory.
+  enable_vc_root   1  # Show VC root directory in VC info.
+  enable_priv      1  # Show privilege information.
+  enable_priv_sudo 1  #   Show sudo ability.
+  enable_auth_krb  1  #   Show Kerberos status.
+  enable_vc_git    1  # Show information about Git repos.
+  enable_vc_hg     1  # Show information about Mercurial repos.
 
+  # List of async background fetchers to run. Note that turning off
+  # enable_async turns off all of these, and turning off individual features
+  # (e.g. enable_vc_git 0) turns off the corresponding async fetchers, even
+  # if they're turned on here.
   async            "hg git krb sudo hgx gitx"
 )
 
@@ -65,51 +62,71 @@ _hp_conf=(
 # individual symbols with optional formatting, or in the case of
 # $_hp_f[cwd], the actual format used (since that's one of the most
 # likely components for customization.)
-
 typeset -A _hp_f=(
+  # Left and right prompt. The _hp function takes a list of formatters to use
+  # and calls them, equivalent to writing $(_hp_fmt_user_host)$(_hp_fmt_cwd)
+  # ...etc out by hand.
   prompt           '$(_hp user_host cwd) $(_hp prompt_symbol)'
   rprompt          ' $(_hp vc_info env privileges)'
-  cwd              "%F{cyan}%(5~,%-1~/…/%2~,%~)%f"
-  env_proxy        "%F{green}º"
-  prompt_sym       "%b%u%s%f• "
-  prompt_sym_a     "%b%u%s%k%F{red}•%f "
-  user_auth_krb_ok "%F{green}†"
-  user_auth_krb_no "%F{red}†"
-  user_priv_root   "%F{red}√"
-  user_priv_sudo   "%F{blue}√"
-  vc_git           "±"
-  vc_hg            "☿"
-  vc_staged        "%F{green}+"
-  vc_changed       "%F{yellow}!"
-  vc_untracked     "%F{red}?"
-  vc_unresolved    "%F{red}%%"
-  vc_incoming      "%F{yellow}⇣"
-  vc_outgoing      "%F{yellow}⇡"
-  vc_diverged      "%F{red}⇅"
-  vc_error         "%F{red}⁉"
 
-  s_env            " %F{blue}"
-  e_env            "%f"
-  s_host           "%F{blue}@"
-  e_host           "%f "
-  s_priv           "%F{blue}"
-  e_priv           "%f"
-  s_vc             " %F{blue}"
-  e_vc             "%f"
-  s_vc_branch      " %F{blue}"
-  e_vc_branch      "%F{blue}"
-  s_vc_status      " %F{blue}"
-  e_vc_status      "%f"
-  s_vc_file_status "%F{blue}"
-  e_vc_file_status "%F{blue}"
-  s_vc_repo_status "%F{blue}"
-  e_vc_repo_status "%F{blue}"
-  s_vc_root        "%F{blue}["
-  e_vc_root        "]%F{blue}"
+  # Working directory.
+  cwd              "%F{cyan}%(5~,%-1~/…/%2~,%~)%f"
+
+  # User prefix and suffix, for normal and root users.
   s_user           "%F{blue}"
   e_user           "%f"
   s_user_root      "%F{red}"
   e_user_root      "%f"
+
+  # Hostname prefix and suffix.
+  s_host           "%F{blue}@"
+  e_host           "%f "
+
+  # Command prompt, with and without async processes running.
+  prompt_sym       "%b%u%s%f• "
+  prompt_sym_a     "%b%u%s%k%F{red}•%f "
+
+  # Privileges and authentication.
+  s_priv           "%F{blue}"
+    user_auth_krb_ok "%F{green}†"
+    user_auth_krb_no "%F{red}†"
+    user_priv_root   "%F{red}√"    # Are we root?
+    user_priv_sudo   "%F{blue}√"   # Can we use sudo?
+  e_priv           "%f"
+
+  # Environment information.
+  s_env            " %F{blue}"
+    env_proxy        "%F{green}º"
+  e_env            "%f"
+
+  # Version control.
+  s_vc             " %F{blue}"
+    vc_git           "±"
+    vc_hg            "☿"
+
+    # VC root directory and current branch.
+    s_vc_root        "%F{blue}["
+    e_vc_root        "]%F{blue}"
+    s_vc_branch      " %F{blue}"
+    e_vc_branch      "%F{blue}"
+
+    # VC file and commit status.
+    s_vc_status      " %F{blue}"
+      s_vc_file_status "%F{blue}"
+        vc_staged        "%F{green}+"
+        vc_changed       "%F{yellow}!"
+        vc_untracked     "%F{red}?"
+        vc_unresolved    "%F{red}%%"
+      e_vc_file_status "%F{blue}"
+      s_vc_repo_status "%F{blue}"
+        vc_incoming      "%F{yellow}⇣"
+        vc_outgoing      "%F{yellow}⇡"
+        vc_diverged      "%F{red}⇅"
+        vc_error         "%F{red}⁉"
+      e_vc_repo_status "%F{blue}"
+    e_vc_status      "%f"
+  e_vc             "%f"
+
 )
 
 ## Utility functions ###################################################
@@ -323,7 +340,10 @@ function _hp_get_session {
   fi
 }
 
-setopt prompt_subst
+# prompt_subst is needed for the prompt to work at all.
+# prompt_cr and prompt_sp are needed for prompts not to clobber the last line
+# of program output in some circumstances.
+setopt prompt_subst prompt_cr prompt_sp
 
 # Kill async processes and clear data, in case of re-source
 _hp_chpwd

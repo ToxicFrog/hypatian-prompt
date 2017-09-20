@@ -4,7 +4,7 @@ typeset -A _hp_git _hp_gitx
 
 function _hp_fmt_git {
   (( ${_hp_git[active]:-0} )) || return
-  _hp_fmt_vcs vc_git ${(kv)_hp_git[@]} ${(kv)_hp_gitx[@]}
+  _hp_fmt_vcs vc_git "${(kv)_hp_git[@]}" "${(kv)_hp_gitx[@]}"
 }
 
 function _hp_git_branch {
@@ -27,13 +27,13 @@ function _hp_async_git {
       _hp_git[vc_root]="$vc_root"
       _hp_git[branch]="$(_hp_git_branch)"
       _hp_git[staged]="$(
-        LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^[^ ?]' | \wc -l)"
+        LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^[^ ?]' | \wc -l | \xargs)"
       _hp_git[changed]="$(
-        LC_ALL=C \git status --porcelain 2>/dev/null| \grep '^.[^ ?]' | \wc -l)"
+        LC_ALL=C \git status --porcelain 2>/dev/null| \grep '^.[^ ?]' | \wc -l | \xargs)"
       _hp_git[untracked]="$(
-        LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^??' | \wc -l)"
+        LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^??' | \wc -l | \xargs)"
       _hp_git[unresolved]="$(
-        LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^UU' | \wc -l)"
+        LC_ALL=C \git status --porcelain 2>/dev/null | \grep '^UU' | \wc -l | \xargs)"
     fi
   fi
   typeset -p _hp_git

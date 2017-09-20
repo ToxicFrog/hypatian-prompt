@@ -3,7 +3,7 @@
 typeset -A _hp_hg _hp_hgx
 
 function _hp_fmt_hg {
-  (( ${git_hp_hg[active]:-0} )) || return
+  (( ${_hp_hg[active]:-0} )) || return
   _hp_fmt_vcs vc_hg ${(kv)_hp_hg[@]} ${(kv)_hp_hgx[@]}
 }
 

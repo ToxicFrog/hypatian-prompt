@@ -43,7 +43,7 @@ function _hp_async_git {
 # Get the sha the branch points to on the remote using `git ls-remote`.
 # If that fails, look for our local mirror in refs/remotes/
 function _hp_git_remote_ref {
-  \git ls-remote "$1" "refs/heads/$2" 2>/dev/null | cut -f1 \
+  GIT_SSH_COMMAND="ssh -oBatchMode=yes" \git ls-remote "$1" "refs/heads/$2" 2>/dev/null | cut -f1 \
     || \git show-ref --verify -s "refs/remotes/$1/$2" 2>/dev/null
 }
 

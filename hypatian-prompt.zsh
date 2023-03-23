@@ -55,7 +55,7 @@ _hp_conf=(
   # enable_async turns off all of these, and turning off individual features
   # (e.g. enable_vc_git 0) turns off the corresponding async fetchers, even
   # if they're turned on here.
-  async            "hg git krb sudo hgx gitx task"
+  async            "hg git krb sudo hgx gitx task taskx"
 
   # File to log errors to. Mostly useful for debugging the prompt.
   error_log        "/dev/null"
@@ -139,9 +139,10 @@ typeset -A _hp_f=(
 
   # Taskwarrior
   s_task           " %B✓%b"
+    task_sync        "%F{cyan}⇅%f"
     task_critical    "%B%F{red}"
     task_urgent      "%B%F{yellow}"
-    task_soon        "%B%F{cyan}★"
+    task_soon        "%B%F{blue}★"
     task_alldone     "%B%F{purple}✪"
   e_task           "%f"
 )

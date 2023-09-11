@@ -28,9 +28,9 @@ function _hp_fmt_task {
 function _hp_async_task_collect {
   _hp_task=(
     "status" "done"
-    "critical" "$(task rc.gc=0 "$_hp_conf[task_filter_critical]" count)"
-    "urgent" "$(task rc.gc=0 "$_hp_conf[task_filter_urgent]" count)"
-    "soon" "$(task rc.gc=0 "$_hp_conf[task_filter_soon]" count)"
+    "critical" "$(task rc.gc=0 rc.recurrence=0 "$_hp_conf[task_filter_critical]" count)"
+    "urgent" "$(task rc.gc=0 rc.recurrence=0 "$_hp_conf[task_filter_urgent]" count)"
+    "soon" "$(task rc.gc=0 rc.recurrence=0 "$_hp_conf[task_filter_soon]" count)"
   )
   typeset -p _hp_task
 }
@@ -52,7 +52,7 @@ function _hp_async_task {
   fi
 
   # Run "task next" to generate pending recurrences
-  task rc.gc=0 next &>/dev/null
+  #task rc.gc=0 next &>/dev/null
   # And then collect the results
   _hp_async_task_collect
 }
@@ -68,8 +68,8 @@ function _hp_async_taskx {
   [[ $taskd ]] || return 0
   # If it is enabled, the fast path does nothing at all and we need to do all
   # the work, including generating recurrences.
-  task rc.gc=0 next &>/dev/null
+  #task rc.gc=0 next &>/dev/null
   # Then sync with the server and collect results.
-  task rc.gc=0 sync &>/dev/null
+  task rc.gc=0 rc.recurrence=0 sync &>/dev/null
   _hp_async_task_collect
 }

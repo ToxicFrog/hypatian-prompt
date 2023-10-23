@@ -50,12 +50,13 @@ _hp_conf=(
   enable_vc_git    1  # Show information about Git repos.
   enable_vc_hg     1  # Show information about Mercurial repos.
   enable_task      1  # Show Taskwarrior pending task counts.
+  enable_chezmoi   1  # Show chezmoi target and source status
 
   # List of async background fetchers to run. Note that turning off
   # enable_async turns off all of these, and turning off individual features
   # (e.g. enable_vc_git 0) turns off the corresponding async fetchers, even
   # if they're turned on here.
-  async            "hg git krb sudo hgx gitx task taskx"
+  async            "hg git krb sudo hgx gitx task taskx chezmoi"
 
   # File to log errors to. Mostly useful for debugging the prompt.
   error_log        "/dev/null"
@@ -145,6 +146,16 @@ typeset -A _hp_f=(
     task_soon        "%B%F{blue}★"
     task_alldone     "%B%F{purple}✪"
   e_task           "%f"
+
+  # Chezmoi
+  s_chezmoi             " ⌂"
+    chezmoi_ok            "%B%F{green}✓"
+    chezmoi_incoming      "%B%F{yellow}⇣"
+    chezmoi_outgoing      "%B%F{red}⇅"
+  e_chezmoi             "%f"
+  # Used when in a chezmoi subshell
+  s_chezmoi_sh          " %B%F{cyan}(⌂)"
+  e_chezmoi_sh          "%f"
 )
 
 ## Utility functions ###################################################

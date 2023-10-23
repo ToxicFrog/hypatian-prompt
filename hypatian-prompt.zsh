@@ -56,6 +56,10 @@ _hp_conf=(
   # enable_async turns off all of these, and turning off individual features
   # (e.g. enable_vc_git 0) turns off the corresponding async fetchers, even
   # if they're turned on here.
+  # The default enables all of them. Note that some have variants with and
+  # without an "x" suffix, e.g. git vs. gitx; in that case, the plain variant
+  # operates locally (but may still be expensive, e.g. `git status`), while the
+  # -x variant does network operations (e.g. `git ls-remote`).
   async            "hg git krb sudo hgx gitx task taskx chezmoi"
 
   # File to log errors to. Mostly useful for debugging the prompt.

@@ -144,21 +144,21 @@ typeset -A _hp_f=(
 
   # Taskwarrior
   s_task           " %B✓%b"
-    task_sync        "%F{cyan}⇅%f"
-    task_critical    "%B%F{red}"
-    task_urgent      "%B%F{yellow}"
+    task_sync        "%F{14}⇅%f"
+    task_critical    "%B%F{9}"
+    task_urgent      "%B%F{11}"
     task_soon        "%B%F{blue}★"
     task_alldone     "%B%F{purple}✪"
   e_task           "%f"
 
   # Chezmoi
   s_chezmoi             " ⌂"
-    chezmoi_ok            "%B%F{green}✓"
-    chezmoi_incoming      "%B%F{yellow}⇣"
-    chezmoi_outgoing      "%B%F{red}⇅"
+    chezmoi_ok            "%B%F{10}✓"
+    chezmoi_incoming      "%B%F{11}⇣"
+    chezmoi_outgoing      "%B%F{9}⇅"
   e_chezmoi             "%f"
   # Used when in a chezmoi subshell
-  s_chezmoi_sh          " %B%F{cyan}(⌂)"
+  s_chezmoi_sh          " %B%F{14}(⌂)"
   e_chezmoi_sh          "%f"
 )
 

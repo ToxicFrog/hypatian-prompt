@@ -68,7 +68,7 @@ _hp_conf=(
 
   # Taskwarrior configuration
   task_filter_critical  "+PENDING and +OVERDUE"
-  task_filter_urgent    "+PENDING and -WAITING and (+ACTIVE or due.before:today+25h) and -OVERDUE"
+  task_filter_urgent    "+PENDING and -WAITING and due.before:today+25h and -OVERDUE"
   task_filter_soon      "+PENDING and -WAITING and (+ACTIVE or due.before:today+1w+25h or +next)"
 )
 

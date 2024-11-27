@@ -60,7 +60,7 @@ _hp_conf=(
   # without an "x" suffix, e.g. git vs. gitx; in that case, the plain variant
   # operates locally (but may still be expensive, e.g. `git status`), while the
   # -x variant does network operations (e.g. `git ls-remote`).
-  async            "hg git krb sudo hgx gitx task taskx chezmoi"
+  async            "hg git krb sudo hgx gitx task chezmoi"
 
   # File to log errors to. Mostly useful for debugging the prompt.
   error_log        "/dev/null"

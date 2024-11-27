@@ -45,7 +45,7 @@ function _hp_async_task {
 
   local taskd="$(task _get rc.taskd.server)"
   # If taskd is enabled, _async_taskx will do the thing instead.
-  if [[ $taskd ]]; then
+  if [[ $taskd && $_hp_conf[async] =~ taskx ]]; then
     _hp_task=(status "sync")
     typeset -p _hp_task
     return 0

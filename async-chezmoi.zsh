@@ -22,7 +22,8 @@ function _hp_fmt_chezmoi {
   # Don't display info if we aren't in ~
   [[ $PWD/ == $HOME/* ]] || return
   # Don't display it if the source-dir doesn't exist
-  [[ -d "$(chezmoi source-path)" ]] || return
+  # It turns out that this is extremely expensive in recent chezmoi, about 300ms.
+  # [[ -d "$(chezmoi source-path)" ]] || return
 
   echo -n "$_hp_f[s_chezmoi]"
   if (( ! _hp_chezmoi[active] )); then
